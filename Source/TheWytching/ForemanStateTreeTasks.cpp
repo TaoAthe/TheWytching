@@ -147,14 +147,51 @@ EStateTreeRunStatus FForemanTask_AssignWorker::EnterState(
 
 	PlayMontageOnPawn(Pawn, Montage);
 
-	// AssignWorker delegates to the Blueprint dispatch logic for now.
-	// The BP_FOREMAN_V2 Blueprint has the validated AssignWork function
-	// that handles TryClaimTask + ReceiveCommand.
-	//
-	// TODO: Port AssignWork logic to C++ once BPI_WorkerCommand and
-	//       BPI_WorkTarget are migrated to C++ interfaces.
+	// Find the first unclaimed workstation
+	TArray<AActor*> WorkStations;
+	UGameplayStatics::GetAllActorsWithTag(
+		Pawn->GetWorld(), FName(TEXT("WorkStation")), WorkStations);
 
-	UE_LOG(LogForeman, Log, TEXT("AssignWorker: Delegating to Blueprint dispatch loop"));
+	AActor* Target = nullptr;
+	for (AActor* WS : WorkStations)
+	{
+		if (WS && !WS->Tags.Contains(FName(TEXT("Claimed"))))
+		{
+			Target = WS;
+			break;
+		}
+	}
+
+	// Find the first idle worker
+	TArray<AActor*> Workers;
+	UGameplayStatics::GetAllActorsWithTag(
+		Pawn->GetWorld(), FName(TEXT("Worker")), Workers);
+
+	AActor* Worker = nullptr;
+	for (AActor* W : Workers)
+	{
+		if (W && W->Tags.Contains(FName(TEXT("Idle"))))
+		{
+			Worker = W;
+			break;
+		}
+	}
+
+	if (!Target || !Worker)
+	{
+		UE_LOG(LogForeman, Warning, TEXT("AssignWorker: No unclaimed target or idle worker — failing"));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// Claim the workstation and mark worker busy
+	Target->Tags.AddUnique(FName(TEXT("Claimed")));
+	Worker->Tags.Remove(FName(TEXT("Idle")));
+
+	UE_LOG(LogForeman, Log, TEXT("AssignWorker: Claimed %s, assigned %s (removed Idle tag)"),
+		*Target->GetName(), *Worker->GetName());
+
+	// TODO: Send Build command to worker via BPI_WorkerCommand once migrated to C++
+
 	return EStateTreeRunStatus::Succeeded;
 }
 
