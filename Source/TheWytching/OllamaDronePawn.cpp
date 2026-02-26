@@ -18,9 +18,9 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 
-namespace
+namespace OllamaDroneJson
 {
-	FString EscapeForJson(const FString& In)
+	static FString EscapeForJson(const FString& In)
 	{
 		FString Out = In;
 		Out.ReplaceInline(TEXT("\\"), TEXT("\\\\"));
@@ -600,7 +600,7 @@ void AOllamaDronePawn::SendImageToLLM(const FString& Base64Image,
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
-	const FString EscapedContext = EscapeForJson(ContextText);
+	const FString EscapedContext = OllamaDroneJson::EscapeForJson(ContextText);
 
 	FString ContentItems = FString::Printf(
 		TEXT(R"({ "type": "text", "text": "context_json: %s" })"), *EscapedContext);
@@ -718,7 +718,7 @@ void AOllamaDronePawn::SendImageToGemini(const FString& Base64Image,
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
-	const FString EscapedContext = EscapeForJson(ContextText);
+	const FString EscapedContext = OllamaDroneJson::EscapeForJson(ContextText);
 
 	FString Body = FString::Printf(TEXT(R"({
 		"contents": [

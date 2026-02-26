@@ -1,5 +1,7 @@
 #include "ForemanSurveyComponent.h"
 #include "PatrolPoint.h"
+#include "ForemanTypes.h"
+#include "IWytchInteractable.h"
 #include "Kismet/GameplayStatics.h"
 
 UForemanSurveyComponent::UForemanSurveyComponent()
@@ -53,4 +55,28 @@ FString UForemanSurveyComponent::GenerateStatusReport()
 		TotalWorkers,
 		IdleWorkers,
 		TotalWorkers - IdleWorkers);
+}
+
+TArray<AActor*> UForemanSurveyComponent::DiscoverInteractables(float SearchRadius)
+{
+	TArray<AActor*> Result;
+	AActor* Owner = GetOwner();
+	if (!Owner) return Result;
+
+	const FVector Origin = Owner->GetActorLocation();
+	const float RadiusSq = SearchRadius * SearchRadius;
+
+	TArray<AActor*> All;
+	UGameplayStatics::GetAllActorsWithInterface(GetWorld(), UWytchInteractable::StaticClass(), All);
+
+	for (AActor* Actor : All)
+	{
+		if (Actor && FVector::DistSquared(Actor->GetActorLocation(), Origin) <= RadiusSq)
+		{
+			Result.Add(Actor);
+		}
+	}
+
+	UE_LOG(LogForeman, Log, TEXT("DiscoverInteractables: Found %d within %.0f units"), Result.Num(), SearchRadius);
+	return Result;
 }

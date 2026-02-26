@@ -250,6 +250,24 @@ Same TODO as tasks re: tag-based → interface-based queries.
 
 - `Source/TheWytching/OllamaDebugActor.*`
 
+#### G. C++ Interface Hierarchy (NEW — 2026-02-26, awaiting first compile)
+
+Foundation for all world interactions in TheWytching. Replaces the Blueprint-only `BPI_WorkerCommand`/`BPI_WorkTarget` interfaces.
+
+**Design principle:** Workers receive generic commands ("go to X, interact"). The object itself defines what "interact" means via the interface it implements.
+
+| Interface | Inherits | Purpose | Key Functions |
+|---|---|---|---|
+| `IWytchInteractable` | — | Base. Anything in the world that can be interacted with. | `GetInteractionType()`, `IsInteractionAvailable()`, `GetInteractionLocation()` |
+| `IWytchCarryable` | `IWytchInteractable` | Anything that can be picked up and moved. | `OnPickedUp(Carrier)`, `OnPutDown(DropLocation)`, `GetDeliveryLocation()`, `IsAtDestination()` |
+| `IWytchWorkSite` | `IWytchInteractable` | Anywhere work can be performed. | `TryClaim(Worker)`, `ReleaseSite(Worker)`, `GetClaimant()`, `GetWorkType()` |
+
+All functions are `BlueprintNativeEvent` + `BlueprintCallable` — C++ provides defaults via `_Implementation()`, Blueprints can override.
+
+**UInterface inheritance note:** `UWytchCarryable : public UWytchInteractable` and `UWytchWorkSite : public UWytchInteractable` on the U-side; matching I-side inheritance. This is supported in UE5 but can be tricky — if compile fails on inheritance, fallback plan is to flatten to independent interfaces that each redeclare base methods.
+
+**Status:** Files written, awaiting editor restart for full UHT + compile pass. Live Coding cannot handle new `GENERATED_BODY()` files.
+
 ## 5. Asset Inventory (Key, Active)
 
 ### Core Blueprints
@@ -282,7 +300,7 @@ Same TODO as tasks re: tag-based → interface-based queries.
 - `/Game/Foreman/EQ_FindWorkers` — EQS query. May be reused from StateTree tasks in future.
 - `/Game/Foreman/EQ_FindWorkTargets` — EQS query. May be reused from StateTree tasks in future.
 - `/Game/Foreman/EQ_FindOversightPoint` — EQS query for Monitor state.
-- `/Game/Foreman/ST_Foreman` — **Active.** StateTree asset (StateTreeAIComponentSchema). 4 states, 3 tasks, 3 transitions, 2 conditions, 1 evaluator. Wired to `AIC_Foreman`'s inherited `StateTreeAIComponent`.
+- `/Game/Foreman/ST_Foreman` — **Active, validated.** StateTree asset (StateTreeAIComponentSchema). 5 states, 10 tasks, 4 transitions, 4 conditions, 1 evaluator. Wired to `AIC_Foreman`'s inherited `StateTreeAIComponent`. Working as of 2026-02-26.
 
 ### C++ Source Files (`Source/TheWytching/`)
 
@@ -299,6 +317,12 @@ Same TODO as tasks re: tag-based → interface-based queries.
 | `OllamaDebugActor.h/.cpp` | Debug LLM actor |
 | `OllamaDebugSpawner.h/.cpp` | Debug spawner |
 | `OllamaDronePawn.h/.cpp` | Player pawn (C++) |
+| `PC_Wytching.h/.cpp` | Player controller (C++) |
+| `PatrolPoint.h/.cpp` | Patrol waypoint actor |
+| `ForemanSurveyComponent.h/.cpp` | Survey/scan component for Foreman. `DiscoverInteractables(SearchRadius)` — pure interface-based discovery via `GetAllActorsWithInterface<UWytchInteractable>`, distance-filtered, no tags. |
+| `IWytchInteractable.h/.cpp` | **NEW (2026-02-26, awaiting compile)** Base UInterface — anything interactable in the world |
+| `IWytchCarryable.h/.cpp` | **NEW (2026-02-26, awaiting compile)** UInterface extending Interactable — pickable/movable objects |
+| `IWytchWorkSite.h/.cpp` | **NEW (2026-02-26, awaiting compile)** UInterface extending Interactable — work locations |
 
 ### Widget Assets (currently detached/disabled path)
 
@@ -353,18 +377,21 @@ Same TODO as tasks re: tag-based → interface-based queries.
 
 ## 7. Current Build State
 
-### C++ (awaiting editor restart to compile)
+### C++ — Compiled and working
 
-New/modified C++ files written but not yet compiled (requires editor restart for new `StateTreeModule`/`GameplayStateTreeModule` deps):
+StateTree architecture fully compiled and running:
+- `ForemanTypes.h/.cpp`, `ForemanStateTreeTasks.h/.cpp`, `ForemanStateTreeConditions.h/.cpp`, `ForemanStateTreeEvaluators.h/.cpp`
+- `Foreman_AIController.h/.cpp`, `Foreman_Character.h/.cpp`, `Foreman_BrainComponent.h/.cpp`
+- `ForemanSurveyComponent.h/.cpp`, `PC_Wytching.h/.cpp`, `PatrolPoint.h/.cpp`
 
-- `ForemanTypes.h/.cpp` — new
-- `ForemanStateTreeTasks.h/.cpp` — new
-- `ForemanStateTreeConditions.h/.cpp` — new
-- `ForemanStateTreeEvaluators.h/.cpp` — new
-- `Foreman_AIController.h/.cpp` — refactored (BT→StateTree)
-- `Foreman_Character.h/.cpp` — updated (removed BrainComponent)
-- `TheWytching.Build.cs` — added StateTree modules
-- `TheWytching.uproject` — added StateTree plugin
+### C++ — Awaiting editor restart to compile (2026-02-26)
+
+New `IWytch*` interface files (6 files, all `GENERATED_BODY()`):
+- `IWytchInteractable.h/.cpp`
+- `IWytchCarryable.h/.cpp`
+- `IWytchWorkSite.h/.cpp`
+
+Live Coding cannot handle new files — requires full editor restart for UHT pass.
 
 ### Blueprint — Validated (compiled + runtime evidence)
 
@@ -406,16 +433,27 @@ These should be **removed** during Phase 4 Integration cutover.
 
 | Phase | Scope | Status |
 |---|---|---|
-| **Phase 0** | Foundation: Build.cs, .uproject, AIController refactor, ForemanTypes | **Code written, awaiting compile** |
-| **Phase 1** | StateTree Tasks: PlanJob, AssignWorker, Monitor, Rally, Wait | **Code written, awaiting compile** |
-| **Phase 2** | Conditions (HasIdleWorkers, HasAvailableWork) + Evaluator (WorkAvailability) | **Code written, awaiting compile** |
-| **Phase 3** | Create `ST_Foreman` StateTree asset, build state hierarchy, wire transitions | **Next after compile** |
-| **Phase 4** | Integration: swap BP_FOREMAN_V2 AIControllerClass → AForeman_AIController, remove dead BT nodes, disable Blueprint timer loop | Pending |
-| **Phase 5** | Cleanup: archive AIC_NPC_SmartObject, update docs, structured logging | Pending |
+| **Phase 0** | Foundation: Build.cs, .uproject, AIController refactor, ForemanTypes | **Complete** |
+| **Phase 1** | StateTree Tasks: PlanJob, AssignWorker, Monitor, Rally, Wait | **Complete** |
+| **Phase 2** | Conditions (HasIdleWorkers, HasAvailableWork) + Evaluator (WorkAvailability) | **Complete** |
+| **Phase 3** | Create `ST_Foreman` StateTree asset, build state hierarchy, wire transitions | **Complete — ST_Foreman working (5 states, 10 tasks, 4 transitions, 4 conditions, 1 evaluator)** |
+| **Phase 4** | Integration: AIC_Foreman active, StateTree starts on possess | **Complete — validated, bStartLogicAutomatically=True** |
+| **Phase 5** | Cleanup: tag-based queries → C++ interfaces | **In progress — IWytch* interfaces written + `DiscoverInteractables` added to ForemanSurveyComponent, all awaiting editor restart to compile** |
+
+### Current: IWytch* Interface Hierarchy + Block Transport Demo
+
+| Phase | Scope | Status |
+|---|---|---|
+| **Interfaces** | `IWytchInteractable`, `IWytchCarryable`, `IWytchWorkSite` C++ UInterfaces | **Code written, awaiting editor restart to compile** |
+| **Gait Fix** | BP_FOREMAN_V2 walks by default, `bForceRun` for running | **Complete — compiled clean** |
+| **Task Infra** | Add Transport to E_WorkTaskType, BP_Block, BP_TransportStation | Pending |
+| **Worker Commands** | Implement ReceiveCommand on BP_AutoBot (navigate, pickup, deliver) | Pending |
+| **Level Setup** | Blocks at A, transport stations, dropoff at B | Pending |
+| **Wire & Test** | Foreman dispatches all workers to carry blocks A→B | Pending |
 
 ### Future
 
-- Migrate `BPI_WorkerCommand` / `BPI_WorkTarget` to C++ `UInterface` — eliminates tag-based query bridge.
+- ~~Migrate `BPI_WorkerCommand` / `BPI_WorkTarget` to C++ `UInterface`~~ — **In progress.** New `IWytch*` interface hierarchy replaces this (see Section 4G).
 - `FForemanTask_SourceMaterials` — when a material/resource system exists.
 - Reintroduce redesigned cognitive display widget.
 - Replace temporary debug prints with structured `LogForeman` category exclusively.
@@ -454,7 +492,7 @@ These should be **removed** during Phase 4 Integration cutover.
   2. **Orphaned BeginPlay blocked parent startup** — AIC_Foreman had a disconnected `Event BeginPlay` node that overrode (and silently blocked) the parent class `AIC_NPC_SmartObject`'s BeginPlay, which contains the `Start Logic` call. Fixed: deleted the orphaned node so parent's BeginPlay executes.  
   3. **Broken RunStateTree call** — `OnPossess` called `RunStateTree(PossessedPawn, ST_Foreman)`, but the pawn has no `StateTreeComponent` (it's on the controller). This silently failed every time. Fixed: removed `RunStateTree`, "State Tree Started" print, and floating `Get Component by Class`/`Get StateTreeAI` nodes. Kept `OnPossess → Print "OnPossess FIRED"` for debug.  
   **Lesson:** In Blueprint inheritance, a child class with an `Event BeginPlay` node (even if disconnected) **overrides the parent's BeginPlay entirely**. The parent's logic only runs if the child explicitly calls `Parent: Event BeginPlay`. Always verify parent event flow isn't silently blocked.  
-  **Note:** `bStartLogicAutomatically` remains `False` on the component — startup relies on the parent's explicit `Start Logic` call (fires after 2s delay). This is intentional design from `AIC_NPC_SmartObject`.
+  **Note:** `bStartLogicAutomatically` is now `True` on the component (changed from False during later testing/tweaking). StateTree starts automatically on possess.
 
 - **AIC_Foreman is the active AI Controller for BP_FOREMAN_V2:**  
   `AIControllerClass = AIC_Foreman` (inherits from `AIC_NPC_SmartObject`). StateTree startup is handled by the parent class's BeginPlay → 2s delay → `Start Logic` on the `StateTreeAIComponent`. The C++ `AForeman_AIController` may replace this in a future phase.
@@ -462,37 +500,38 @@ These should be **removed** during Phase 4 Integration cutover.
 - **Foreman_BrainComponent perception fallback:**  
   The BrainComponent's `InitialiseComponents()` auto-detects whether to use the controller's perception or create its own. Since the controller now creates perception in C++, the BrainComponent should find and reuse it. Verify after first runtime test.
 
+- **BP_FOREMAN_V2 Gait Override (2026-02-26):**  
+  The Foreman's parent Character class has a player-input-driven `GetDesiredGait()` function called every frame by `UpdateMovement_PreCMC`. For the AI-controlled Foreman (no player input), this produced incorrect gait selection. **Fix:** Added `bForceRun` bool variable (default false, category "AI Movement"). Short-circuited `GetDesiredGait` entry → Branch on `bForceRun` → false=Walk, true=Run. Old player-input logic is disconnected but preserved in the graph. The Foreman now walks by default. StateTree tasks can set `bForceRun = true` when urgency is needed (e.g., Rally).
+
+- **IWytch* interface files require editor restart to compile (2026-02-26):**  
+  6 new C++ files with `GENERATED_BODY()` added: `IWytchInteractable`, `IWytchCarryable`, `IWytchWorkSite` (.h + .cpp each). Live Coding cannot handle new files — requires full editor restart for UHT to generate reflection code. If UInterface inheritance (`UWytchCarryable : public UWytchInteractable`) causes compile errors, flatten to independent interfaces.
+
+- **Worker interface status discrepancy:**  
+  `BP_AutoBot` (4 in level) implements `BPI_WorkerCommand` (GetWorkerState, GetCurrentTask) but has **no ReceiveCommand handler** — just auto-wanders. `SandboxCharacter_Mover` (2 in level) is tagged "Worker" but does **NOT implement BPI_WorkerCommand at all**. The 3x `SandboxCharacter_CMC` are tagged "Legacy" and are not workers. Only AutoBots are viable workers currently.
+
 ## 10. Immediate Next Step (Pick Up Here)
 
-### Step 1: Restart Editor and Compile C++
+### Step 1: Restart Editor — Compile IWytch* Interfaces + DiscoverInteractables
 
-Close and reopen Unreal Editor. The engine will rebuild all C++ because new modules (`StateTreeModule`, `GameplayStateTreeModule`) and a new plugin (`StateTree`) were added. Fix any compile errors:
+Close and reopen Unreal Editor. The engine will run UHT on the 6 new interface files and compile `ForemanSurveyComponent` changes together. Watch for:
 
-Likely issues:
-- Include path: `#include "Components/StateTreeAIComponent.h"` — verify against UE 5.7 source.
-- `UStateTreeAIComponent::GetStateTree()` accessor — may be named differently.
-- Module names `"StateTreeModule"` / `"GameplayStateTreeModule"` — standard but unverified.
+- **UInterface inheritance errors** — `UWytchCarryable : public UWytchInteractable` may not be supported. If so, flatten to independent interfaces.
+- **Missing includes** — verify `UObject/Interface.h` resolves correctly.
+- **THEWYTCHING_API linkage** — ensure the API macro exports correctly for interface classes.
 
-### Step 2: Create ST_Foreman StateTree Asset (Phase 3)
+### Step 2: Implement Foreman's Site Discovery Loop
 
-1. Create StateTree asset `/Game/Foreman/ST_Foreman` with `StateTreeAIComponentSchema`.
-2. Build state hierarchy under Root (TrySelectChildrenInOrder):
-   - **Dispatch** — Enter conditions: `HasIdleWorkers` + `HasAvailableWork`. Tasks: PlanJob → AssignWorker. Transition: OnStateCompleted → Monitor.
-   - **Monitor** — Enter condition: active assignments exist. Task: Monitor. Transition: OnTick if HasIdleWorkers AND HasAvailableWork → Dispatch.
-   - **Rally** — Reserved for external command trigger.
-   - **Idle** — Fallback. Task: Wait.
-3. Add evaluator: `WorkAvailability` at root level.
-4. Set `ST_Foreman` as the StateTree on `AForeman_AIController`'s `StateTreeAIComponent`.
+`ForemanSurveyComponent::DiscoverInteractables(float SearchRadius)` is written and ready to compile. After successful compile:
 
-### Step 3: Integration + Cutover (Phase 4)
+1. Wire `DiscoverInteractables` into StateTree tasks (replace tag-based queries in `FForemanTask_PlanJob`, `FForemanCondition_HasAvailableWork`, etc.).
+2. PIE test: verify Foreman discovers actors implementing `IWytchInteractable` / `IWytchCarryable` / `IWytchWorkSite` by interface, not tags.
+3. Gradually remove tag-based fallback queries from C++ StateTree code.
 
-1. Change `BP_FOREMAN_V2`'s `AIControllerClass` property from `AIC_NPC_SmartObject` → `AForeman_AIController`.
-2. Remove dead EventGraph nodes: `Get AIController` (2D4AA8C5), `Run Behavior Tree` (8823C383), Sequence `then_2`.
-3. Disable Blueprint dispatch timer (`RunWorkAssignmentLoop`) — StateTree now drives dispatch.
-4. PIE test: verify Foreman is possessed by `AForeman_AIController`, StateTree starts, states transition, worker gets assigned.
+### Architecture Vision
 
-### Step 4: Cleanup (Phase 5)
+The `IWytch*` interface hierarchy becomes the foundation for everything:
+- **IWytchInteractable** — base for all world objects
+- **IWytchCarryable** — blocks, resources, items (anything movable)
+- **IWytchWorkSite** — build sites, harvest points, crafting stations
 
-1. Archive `AIC_NPC_SmartObject` (no longer used by anything).
-2. Replace tag-based queries with C++ interface calls (requires `BPI_WorkerCommand`/`BPI_WorkTarget` migration to C++).
-3. Finalize `agent_context.md`.
+`DiscoverInteractables` is the first concrete consumer of this hierarchy — pure interface discovery, no tags, no casts. Workers receive generic commands ("go to X, interact"). The object's interface defines the behavior. Foreman queries `IWytchInteractable` to find work, `IWytchWorkSite::TryClaim()` for atomic assignment, `IWytchCarryable` for transport tasks. This replaces the tag-based query bridge and the Blueprint-only `BPI_WorkerCommand`/`BPI_WorkTarget` interfaces.

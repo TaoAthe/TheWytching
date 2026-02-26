@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "IWytchInteractable.h"
 #include "ForemanSurveyComponent.generated.h"
 
 class APatrolPoint;
@@ -28,6 +29,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Survey")
 	FString GenerateStatusReport();
+
+	/** Find all IWytchInteractable actors within SearchRadius of the owner. */
+	UFUNCTION(BlueprintCallable, Category = "Survey")
+	TArray<AActor*> DiscoverInteractables(float SearchRadius);
 
 private:
 	int32 CurrentPatrolIndex = 0;
