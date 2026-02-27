@@ -1,0 +1,10 @@
+Log file: C:\Users\Sarah\AppData\Local\UnrealBuildTool\Log.txt
+Using 'git status' to determine working set for adaptive non-unity build (C:\Users\Sarah\Documents\Unreal Projects\TheWytching).
+Creating makefile for TheWytchingEditor (command line arguments changed)
+Plugin 'AgentIntegrationKit' depends on plugin 'StructUtils' which was deprecated in 5.5 and will soon be removed. Please update your dependencies.
+Project 'TheWytchingEditor' depends on plugin 'StructUtils' which was deprecated in 5.5 and will soon be removed. Please update your dependencies.
+UHT compiled-in object format Default
+Unable to build while Live Coding is active. Exit the editor and game, or press Ctrl+Alt+F11 if iterating on code in the editor or game
+
+Result: Failed (OtherCompilationError)
+Total execution time: 4.49 seconds

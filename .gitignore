@@ -1,0 +1,60 @@
+# Unreal Engine 5 .gitignore
+# Exclude build and intermediate files
+
+# Binaries
+Binaries/
+Build/
+
+# Intermediate files
+Intermediate/
+
+# Derived data cache
+DerivedDataCache/
+
+# Saved files (logs, screenshots, etc)
+Saved/
+
+# Content (binary assets - too large for GitHub without LFS)
+Content/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains Rider
+.idea/
+.rider/
+*.sln.iml
+
+# macOS
+.DS_Store
+
+# Plugins (except project plugins)
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/Saved/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Editor specific
+EditorPreferences.ini
+
+# User settings
+*.sln.DotSettings.user
+
+# Generated files
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+
