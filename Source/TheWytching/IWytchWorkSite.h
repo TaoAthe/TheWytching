@@ -1,7 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "IWytchInteractable.h"
+#include "AndroidTypes.h"
 #include "IWytchWorkSite.generated.h"
 
 UINTERFACE(MinimalAPI, Blueprintable)
@@ -13,25 +15,37 @@ class UWytchWorkSite : public UWytchInteractable
 /**
  * Anywhere work can be performed by a worker.
  * Extends IWytchInteractable — GetInteractionType() returns "Work" by default.
+ *
+ * Claiming is handled by SmartObjects (USmartObjectSubsystem).
+ * This interface defines WHAT HAPPENS during the work interaction:
+ *   SmartObject gets the worker there → BeginWork → TickWork → EndWork
  */
 class THEWYTCHING_API IWytchWorkSite : public IWytchInteractable
 {
 	GENERATED_BODY()
 
 public:
-	/** Claim this site for a worker. Returns true if claim succeeded. */
+	/** What task type is this site? Returns a GameplayTag (e.g. Task.Build, Task.Repair). */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
-	bool TryClaim(AActor* Worker);
+	FGameplayTag GetTaskType() const;
 
-	/** Release this site (worker finished or abandoned). */
+	/** How long does interaction take in seconds? 0 = instant. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
-	void ReleaseSite(AActor* Worker);
+	float GetInteractionDuration() const;
 
-	/** Who currently has this site claimed? nullptr if unclaimed. */
+	/** Begin the work interaction. Returns true if work can begin. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
-	AActor* GetClaimant() const;
+	bool BeginWork(AActor* Worker);
 
-	/** What type of work is performed here? (e.g. "Build", "Harvest") */
+	/** Called each tick during work (progress bars, animations, etc.). */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
-	FString GetWorkType() const;
+	void TickWork(AActor* Worker, float DeltaTime);
+
+	/** End interaction. Called on completion, abort, or failure. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
+	void EndWork(AActor* Worker, EWorkEndReason Reason);
+
+	/** Is this site currently functional? (could be destroyed, unpowered, etc.) */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wytch|WorkSite")
+	bool IsOperational() const;
 };

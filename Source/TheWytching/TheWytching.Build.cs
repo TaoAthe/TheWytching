@@ -14,7 +14,8 @@ public class TheWytching : ModuleRules
 			"HTTP", "Json", "JsonUtilities", "ImageWrapper",
 			"AIModule", "NavigationSystem",
 			"GameplayAbilities", "GameplayTags", "GameplayTasks",
-			"StateTreeModule", "GameplayStateTreeModule"
+			"StateTreeModule", "GameplayStateTreeModule",
+			"SmartObjectsModule"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

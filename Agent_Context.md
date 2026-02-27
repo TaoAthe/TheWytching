@@ -1,6 +1,6 @@
 # TheWytching: Agent Context
 
-**Last updated:** 2026-02-26 (post-SmartObjects architectural pivot)
+**Last updated:** 2026-02-27 (parallel C++ foundation built — pending compile)
 
 ---
 
@@ -37,10 +37,15 @@ Everything in this doc exists to make this loop work reliably with any number of
 - **DO** use SmartObjects for work target discovery and slot claiming. Do not build custom discovery/claim systems.
 - **DO** use GameplayTags for worker capability matching (e.g. `Capability.Hauling`, `Capability.LaserCutter`, `Capability.Combat`).
 - **DO** use `IWytch*` interfaces to define interaction behavior on target objects. SmartObjects gets the worker there and claims the slot; the interface defines what happens.
-- **DO** use explicit `Print String` traces for runtime validation.
+- **DO** use `IWytchCommandable` for Foreman-to-worker communication. `IWytch*` interfaces are for worker-to-object interaction. `IWytchCommandable` is for Foreman-to-worker commands.
+- **DO** use `LogWytchAndroid` for android condition/degradation logging, `LogWytchWorker` for worker-specific logging. `LogForeman` remains for Foreman dispatch logic.
+- **DO** use explicit `Print String` traces for runtime validation. Transition to Visual Logger (`vlog`) + `LogForeman`/`LogWytchWorker` categories after Step 5 (Print Strings become noise with multiple agents).
 - **DO** route new Foreman behavior to `AIC_Foreman` or new StateTree tasks. Not `Foreman_Character.h` (future base class, not active).
+- **DO** use `MarkSlotAsClaimed()` / `MarkSlotAsFree()` for SmartObject claims. NOT the deprecated `Claim()` / `Release()` wrappers.
 - **DO NOT** create new Blueprint-only AI logic. All new AI code is C++.
 - **DO NOT** build custom world-scanning or claim/release logic. SmartObject subsystem handles this now.
+- **DO NOT** use deprecated `USmartObjectSubsystem::Claim()` / `Release()`. Use `MarkSlotAsClaimed()` / `MarkSlotAsFree()`.
+- **DO NOT** use `FGameplayTagContainer` for `FSmartObjectRequestFilter::ActivityRequirements` — it requires `FGameplayTagQuery` (build with `FGameplayTagQuery::MakeQuery_MatchAnyTags()`).
 - **DO NOT** use tag-based actor queries (`GetAllActorsWithTag`) for finding workers or work targets.
 - **DO NOT** re-add or auto-generate interface function graphs that already exist (causes `"Graph named 'X' already exists"` errors).
 - **DO NOT** suggest Behavior Tree solutions. Project uses StateTree exclusively. `BT_Foreman` is archived reference only.
@@ -58,7 +63,7 @@ Everything in this doc exists to make this loop work reliably with any number of
 - **Incremental compile (existing files only):** Live Coding in-editor (Ctrl+Alt+F11)
 - **Blueprint compile:** In-editor, but **never during PIE**
 - **Include convention:** Use path-relative includes (`#include "Foreman/ForemanTypes.h"`), not engine-wide (`#include "Engine/Engine.h"`)
-- **Log convention:** `UE_LOG(LogForeman, Log, TEXT("..."));` — declared in `ForemanTypes.h`. Never use `LogTemp` in Foreman code.
+- **Log convention:** `UE_LOG(LogForeman, Log, TEXT("..."));` — declared in `ForemanTypes.h`. `LogWytchAndroid` / `LogWytchWorker` declared in `AndroidTypes.h`. Never use `LogTemp` in project code.
 
 ---
 
@@ -80,7 +85,7 @@ These are validated and working. Do not change without explicit instruction:
 
 - **Unreal Engine 5.7**, DX12, desktop-focused
 - **C++ module:** `Source/TheWytching/`
-- **Key deps (Build.cs):** HTTP, Json, JsonUtilities, ImageWrapper, AIModule, NavigationSystem, GameplayAbilities, GameplayTags, GameplayTasks, StateTreeModule, GameplayStateTreeModule
+- **Key deps (Build.cs):** HTTP, Json, JsonUtilities, ImageWrapper, AIModule, NavigationSystem, GameplayAbilities, GameplayTags, GameplayTasks, StateTreeModule, GameplayStateTreeModule, SmartObjectsModule
 - **Key plugins:** StateTree, SmartObjects, GameplayInteractions, GameplayBehaviors, Mover, MetaHuman, Chooser, PoseSearch, MotionWarping
 - **Level:** `/Game/Levels/NPCLevel.NPCLevel`
 - **Game mode:** `GM_Sandbox` → Player = `OllamaDronePawn`, Controller = `PC_Sandbox`
@@ -104,6 +109,15 @@ SmartObjects replace all custom discovery and claim/release logic. This is the e
 
 **Claim ownership:** The **worker** holds the claim, not the Foreman. The Foreman identifies the slot and sends the worker a claim handle. The worker claims on arrival. If the worker fails or times out, the slot is released automatically.
 
+**UE 5.7 SmartObject API (verified from engine source):**
+- `USmartObjectSubsystem::GetCurrent(World)` — static accessor for the subsystem
+- `FindSmartObjects(FSmartObjectRequest, TArray<FSmartObjectRequestResult>&, FConstStructView)` — spatial query
+- `FSmartObjectRequestFilter::ActivityRequirements` is `FGameplayTagQuery` — use `FGameplayTagQuery::MakeQuery_MatchAnyTags(TagContainer)` to build
+- `MarkSlotAsClaimed(SlotHandle, ClaimPriority, UserData)` → returns `FSmartObjectClaimHandle`
+- `MarkSlotAsFree(ClaimHandle)` — releases the claim
+- `GetSlotTransform(RequestResult)` → `TOptional<FTransform>` for navigation targeting
+- ⚠️ `Claim()` and `Release()` are **deprecated wrappers** — do not use
+
 **SmartObject Definitions (tag-based, not one-per-type):**
 - Asset path: `/Game/Foreman/SmartObjects/` — naming convention: `SOD_[TaskType]` (e.g. `SOD_Build`, `SOD_Transport`, `SOD_Demolition`)
 - One `USmartObjectDefinition` asset per task type, with slot tags for capability requirements
@@ -118,11 +132,20 @@ SmartObjects get the worker to the right place and handle the slot. `IWytch*` in
 |---|---|---|
 | `IWytchInteractable` | — | Base: anything in the world that can be interacted with |
 | `IWytchCarryable` | `IWytchInteractable` | Pickable/movable objects (blocks, resources, items) |
-| `IWytchWorkSite` | `IWytchInteractable` | Work locations (build sites, harvest points, stations) |
+| `IWytchWorkSite` | `IWytchInteractable` | Work locations — `BeginWork`/`TickWork`/`EndWork` contract |
+| `IWytchCommandable` | — | Foreman→worker commands: `ReceiveSmartObjectAssignment`, `GetWorkerState`, `GetCapabilities`, `AbortCurrentTask` |
 
-All functions are `BlueprintNativeEvent` + `BlueprintCallable`. C++ provides defaults, Blueprints can override. **Status: Compiled ✓**
+All functions are `BlueprintNativeEvent` + `BlueprintCallable`. C++ provides defaults, Blueprints can override.
 
-**The handoff:** SmartObject slot is claimed → worker arrives → worker calls `IWytchInteractable` functions on the target actor to execute the actual work. The interface is the "hat behavior" — same worker, different interaction depending on the target's interface.
+**Interface status:**
+- `IWytchInteractable` — Compiled ✓
+- `IWytchCarryable` — Compiled ✓
+- `IWytchWorkSite` — Updated for SmartObjects (old `TryClaim`/`ReleaseSite`/`GetClaimant`/`GetWorkType` removed; new `BeginWork`/`TickWork`/`EndWork`/`GetTaskType`/`IsOperational`/`GetInteractionDuration` added). Pending compile.
+- `IWytchCommandable` — New. Pending compile.
+
+**Separation of concerns:** `IWytch*` interfaces (Interactable, Carryable, WorkSite) define what **objects** do when interacted with. `IWytchCommandable` defines what **workers** do when commanded by the Foreman. Objects are interactable, workers are commandable.
+
+**The handoff:** SmartObject slot is claimed → worker arrives → worker calls `IWytchWorkSite::BeginWork()` on the target → `TickWork()` each frame → `EndWork()` on completion/abort/failure. The interface is the "hat behavior" — same worker, different interaction depending on the target's interface.
 
 ⚠️ If `UWytchCarryable : public UWytchInteractable` causes UHT issues in future, flatten to independent interfaces.
 
@@ -130,9 +153,11 @@ All functions are `BlueprintNativeEvent` + `BlueprintCallable`. C++ provides def
 
 Workers carry GameplayTags describing what they can do. The Foreman uses these to match workers to SmartObject slots.
 
-**Tag declaration:** All project GameplayTags declared in `Config/DefaultGameplayTags.ini`. Two hierarchies:
-- `Task.*` — on SmartObject slots, describes what kind of work (`Task.Build`, `Task.Transport`, `Task.Demolition`)
-- `Capability.*` — on workers, describes what they can do (`Capability.Hauling`, `Capability.LaserCutter`, `Capability.Combat`)
+**Tag declaration:** All project GameplayTags declared in `Config/DefaultGameplayTags.ini`. Four hierarchies:
+- `Task.*` — on SmartObject slots, describes what kind of work (`Task.Build`, `Task.Transport`, `Task.Demolition`, `Task.Repair`, `Task.Recharge`, `Task.SelfMaintenance`, `Task.Recreation`, `Task.Idle`)
+- `Capability.*` — on workers, describes what they can do (`Capability.Hauling`, `Capability.Building`, `Capability.LaserCutter`, `Capability.Demolition`, `Capability.Defense`, `Capability.Combat`, `Capability.Patrol`)
+- `Status.*` — condition state tags for StateTree conditions (`Status.Power.*`, `Status.NeedsRepair`, `Status.CommLink.Lost`, `Status.Vision.*`, `Status.Locomotion.*`)
+- `Mode.*` — duty cycle tags (`Mode.OnDuty`, `Mode.OffDuty`, `Mode.Maintenance`, `Mode.Disabled`)
 
 | Worker Type | Capability Tags | Role |
 |---|---|---|
@@ -192,21 +217,23 @@ Verify counts in-editor — may have changed since last update.
 | `SandboxCharacter_Mover` | Partial | Has `ReceiveCommand_Impl` but does **not formally implement `BPI_WorkerCommand`** (function exists without interface binding). Intentional — will be replaced during worker unification. Do not add interface binding. |
 | `SandboxCharacter_CMC` | Legacy | Tagged "Legacy". Not workers. Ignore |
 
-**Worker state enum:** `/Game/Foreman/E_WorkerState` — Idle, Moving To Task, Working, Returning, Unavailable
+**Worker state enum:** `EWorkerState` in `AndroidTypes.h` (C++) — Idle, MovingToTask, Working, Returning, Unavailable. Blueprint enum `/Game/Foreman/E_WorkerState` is deprecated.
 
-**Worker interface (Blueprint, being replaced):** `BPI_WorkerCommand` — `ReceiveCommand(Name)`, `GetWorkerState()`, `GetCurrentTask()`
+**Worker command interface:** `IWytchCommandable` (C++) — `ReceiveSmartObjectAssignment()`, `GetWorkerState()`, `GetCapabilities()`, `AbortCurrentTask()`. Replaces `BPI_WorkerCommand` Blueprint interface.
+
+**Worker roster (Step 2):** Option A — registration on BeginPlay. Workers call `Foreman->RegisterWorker(this)`, Foreman maintains `TArray<TWeakObjectPtr<AActor>> RegisteredWorkers`.
 
 ### 🎯 Target: Unified Worker Architecture
 
 **Two worker classes**, not one — because specialists and generalists have fundamentally different physical capabilities:
 
 **General Worker (new unified class)**
-- Implements `IWytchInteractable` (so the Foreman can interact with it if needed)
-- Has `USmartObjectBrainComponent` or equivalent — can claim and use SmartObject slots
-- Carries `GameplayTagContainer` with capability tags (`Capability.Hauling`, `Capability.Building`)
+- Implements `IWytchCommandable` (Foreman sends commands) + `IWytchInteractable` (so the Foreman can interact with it if needed)
+- Has `UAndroidConditionComponent` — power, subsystem health, capability recalculation
+- Carries `FGameplayTagContainer` with capability tags (`Capability.Hauling`, `Capability.Building`)
 - State machine: Idle → Commanded → Navigating → Interacting → Returning → Idle
-- Receives commands from Foreman: SmartObject claim handle + target reference
-- Generic interaction: calls `IWytch*` interface on target to determine behavior
+- Receives commands from Foreman via `IWytchCommandable::ReceiveSmartObjectAssignment()`
+- Generic interaction: calls `IWytchWorkSite::BeginWork/TickWork/EndWork` on target
 
 **AutoBot (refactored from existing BP_AutoBot)**
 - Same architecture as General Worker but with different capability tags (`Capability.LaserCutter`, `Capability.Demolition`, `Capability.Defense`)
@@ -215,9 +242,9 @@ Verify counts in-editor — may have changed since last update.
 - Can be assigned to `IWytchDefendPoint` (future) for guard duty
 
 **Both worker types share:**
-- Same state machine contract (Foreman queries state identically)
-- Same command interface (Foreman sends commands identically)
-- Same SmartObject interaction pattern (claim slot → navigate → interact → release)
+- Same `IWytchCommandable` contract (Foreman queries/commands identically)
+- Same `UAndroidConditionComponent` (power, subsystems, degradation)
+- Same SmartObject interaction pattern (receive assignment → navigate → claim → BeginWork → TickWork → EndWork → release)
 - Different capability tags (determines which slots they're eligible for)
 
 ---
@@ -236,7 +263,7 @@ Verify counts in-editor — may have changed since last update.
 | File | Purpose | Status |
 |---|---|---|
 | `ForemanTypes.h/.cpp` | `LogForeman` log category, shared types | Stable |
-| `Foreman_AIController.h/.cpp` | AIController: StateTree + Perception + BrainComponent + SurveyComponent | Active — SmartObjects integration |
+| `Foreman_AIController.h/.cpp` | AIController: StateTree + Perception + BrainComponent + SurveyComponent | Active — needs `GetOwnCondition()`, worker roster (Step 2) |
 | `Foreman_BrainComponent.h/.cpp` | LLM/vision cognitive pipeline | Stable |
 | `Foreman_Character.h/.cpp` | Base C++ character with GAS — **future base class**, not on level. Do not modify unless building a C++ Foreman character. | Future base |
 | `ForemanStateTreeTasks.h/.cpp` | 5 StateTree tasks | Active — refactoring for SmartObjects |
@@ -245,7 +272,10 @@ Verify counts in-editor — may have changed since last update.
 | `ForemanSurveyComponent.h/.cpp` | Secondary discovery for non-SmartObject interactables | Stable, reduced scope |
 | `IWytchInteractable.h/.cpp` | Base UInterface — anything interactable | Compiled ✓ |
 | `IWytchCarryable.h/.cpp` | UInterface — pickable/movable objects | Compiled ✓ |
-| `IWytchWorkSite.h/.cpp` | UInterface — work locations | Compiled ✓ |
+| `IWytchWorkSite.h/.cpp` | UInterface — work locations (`BeginWork`/`TickWork`/`EndWork` contract) | Updated — pending compile (old claim functions removed) |
+| `IWytchCommandable.h/.cpp` | UInterface — Foreman→worker commands (`ReceiveSmartObjectAssignment`, `GetWorkerState`, `GetCapabilities`, `AbortCurrentTask`) | New — pending compile |
+| `AndroidTypes.h/.cpp` | Enums (`EWorkerState`, `EAndroidPowerState`, `ESubsystemStatus`, `ESubsystemType`, `EAndroidReadiness`, `EAbortReason`, `EWorkEndReason`), `LogWytchAndroid` + `LogWytchWorker` log categories | New — pending compile |
+| `AndroidConditionComponent.h/.cpp` | `UAndroidConditionComponent` — power, structural HP, subsystem health, capability recalculation, personality seed | New — pending compile |
 | `CognitiveMapJsonLibrary.h/.cpp` | JSON read/write for cognitive map | Stable — don't touch |
 | `OllamaDebugActor.h/.cpp` | Debug LLM actor | Stable |
 | `OllamaDronePawn.h/.cpp` | Player pawn | Stable — don't touch |
@@ -278,6 +308,9 @@ Verify counts in-editor — may have changed since last update.
 - **Foreman_BrainComponent perception fallback:** Auto-detects controller's perception or creates its own. Verify after runtime test that it finds the controller's component.
 - **SmartObject + Foreman-mediated pattern:** Most UE5 tutorials show individual agents finding their own SmartObjects. This project intentionally does NOT do that. The Foreman queries the subsystem and assigns workers. If you see examples of agents with `FindAndClaimSmartObject` in their own StateTree, that's not our pattern.
 - **SmartObject subsystem must be active:** Verify `USmartObjectSubsystem` is available at runtime. SmartObjects plugin must be enabled (it is). If queries return nothing, check that SmartObject components are registered with the subsystem (happens automatically on BeginPlay, but verify).
+- **Linked StateTree bugs (UE 5.5+):** Global tasks with parameters in linked assets crash hard. `ShouldStateChangeOnReselect` may be ignored intermittently. AI Debugger crashes when viewing linked assets (UE-273333). Linked assets transitioning via On Tick can loop infinitely (UE-222632) — use On State Completed instead. Test linked assets in isolation before integrating. Fall back to duplication if unstable.
+- **SmartObject API naming:** `MarkSlotAsClaimed()` / `MarkSlotAsFree()` are the current 5.7 API. `Claim()` / `Release()` are deprecated wrappers. `FSmartObjectRequestFilter::ActivityRequirements` is a `FGameplayTagQuery`, not a `FGameplayTagContainer` — build with `FGameplayTagQuery::MakeQuery_MatchAnyTags()`.
+- **IWytchWorkSite interface updated:** Old `TryClaim`/`ReleaseSite`/`GetClaimant`/`GetWorkType` removed (2026-02-27). BP_WorkStation Blueprint overrides of these old functions will show as orphaned and need deleting in the editor.
 
 ---
 
@@ -323,10 +356,13 @@ These systems are still in the codebase but are being superseded by SmartObjects
 | System | Replaced By | When to Remove |
 |---|---|---|
 | Tag-based actor queries in StateTree tasks/conditions | SmartObject subsystem queries | After roadmap step 2 is validated |
-| `BP_WorkStation` custom `TryClaim`/`Release` | SmartObject slot claiming | After roadmap step 3 is validated |
 | `ForemanSurveyComponent::DiscoverInteractables` (as primary discovery) | SmartObject subsystem queries | Repurposed, not removed — secondary scan role |
-| `BPI_WorkerCommand` / `BPI_WorkTarget` Blueprint interfaces | `IWytch*` C++ interfaces + SmartObject interaction | After worker unification (step 5) |
+| `BPI_WorkerCommand` / `BPI_WorkTarget` Blueprint interfaces | `IWytchCommandable` C++ interface + SmartObject interaction | After worker unification (step 5) |
 | `BP_WorkStation` self-registration with Foreman | SmartObject auto-registration with subsystem | After roadmap step 1 is validated |
+| `/Game/Foreman/E_WorkerState` Blueprint enum | `EWorkerState` in `AndroidTypes.h` | After worker unification (step 5) |
+
+**Already removed:**
+- `IWytchWorkSite::TryClaim()` / `ReleaseSite()` / `GetClaimant()` / `GetWorkType()` — replaced by SmartObject claiming + `BeginWork`/`TickWork`/`EndWork`/`GetTaskType` contract (2026-02-27)
 
 ---
 
@@ -335,12 +371,30 @@ These systems are still in the codebase but are being superseded by SmartObjects
 > This section is ephemeral. Check items off as completed, then replace with the next active task.
 
 - [x] Restart Unreal Editor — IWytch* interfaces compiled ✓
+- [x] Created `AndroidTypes.h/.cpp` — all enums + log categories
+- [x] Created `AndroidConditionComponent.h/.cpp` — full degradation component
+- [x] Created `IWytchCommandable.h/.cpp` — Foreman→worker command interface
+- [x] Updated `IWytchWorkSite.h` — removed old claim functions, added BeginWork/TickWork/EndWork contract
+- [x] Updated `DefaultGameplayTags.ini` — 31 new tags (Capability, Task, Status, Mode hierarchies)
+- [x] Added `SmartObjectsModule` to `Build.cs`
 
-**Roadmap Step 1: SmartObject Foundation**
+**⚠️ BLOCKING: Close editor → Build from Rider → Reopen editor**
+New files with `GENERATED_BODY()` + `Build.cs` module change = full restart required, no Live Coding.
+After compile:
+- [ ] Verify all new files compile cleanly
+- [ ] Delete orphaned BP_WorkStation Blueprint overrides (TryClaim, ReleaseSite, GetClaimant, GetWorkType)
+
+**Roadmap Step 1: SmartObject Foundation (editor work by Ricky)**
 - [ ] Add `USmartObjectComponent` to `BP_WorkStation`
 - [ ] Create `SOD_Build` definition asset in `/Game/Foreman/SmartObjects/` with `Task.Build` slot tag
+- [ ] Assign `SOD_Build` as the definition on `BP_WorkStation`'s SmartObject component
 - [ ] PIE test: verify SmartObject subsystem sees the WorkStation and its available slot
 
 **Roadmap Step 2: Foreman SmartObject Queries (do not start until Step 1 is validated)**
+- [ ] Implement worker roster (Option A: RegisterWorker/UnregisterWorker on AIC_Foreman)
+- [ ] Add `GetOwnCondition()` to `AIC_Foreman` for self-monitoring
 - [ ] Refactor `FForemanTask_PlanJob` to query SmartObject subsystem
 - [ ] Refactor `FForemanCondition_HasAvailableWork` to query SmartObject subsystem
+- [ ] Refactor `FForemanCondition_HasIdleWorkers` to query worker roster via `IWytchCommandable::GetWorkerState()`
+- [ ] Refactor `FForemanEval_WorkAvailability` to SmartObject queries on timer
+- [ ] Refactor `FForemanTask_AssignWorker` to send `FSmartObjectClaimHandle` + `FSmartObjectSlotHandle` + TargetActor via `IWytchCommandable`
