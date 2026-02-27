@@ -50,6 +50,7 @@ EditorPreferences.ini
 
 # User settings
 *.sln.DotSettings.user
+*.uproject.DotSettings.user
 
 # Generated files
 Binaries/
@@ -57,4 +58,11 @@ DerivedDataCache/
 Intermediate/
 Saved/
 .vs/
+
+# Local build/output diagnostics
+build_output*.txt
+build_check.txt
+
+# Local backup artifacts
+Backups/
 
