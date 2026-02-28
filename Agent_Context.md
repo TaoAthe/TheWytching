@@ -1,6 +1,6 @@
 # TheWytching: Agent Context
 
-**Last updated:** 2026-02-27 (parallel C++ foundation built — pending compile)
+**Last updated:** 2026-02-28 (SmartObject foundation validated — Step 1 complete)
 
 ---
 
@@ -178,7 +178,8 @@ Workers that lack the required capability are never assigned to that slot. AutoB
   - `StateTreeAIComponent` → drives `ST_Foreman` (`bStartLogicAutomatically=True`)
   - `UAIPerceptionComponent` — sight: radius 3000, lose 3500, peripheral 90°
   - `UForeman_BrainComponent` — LLM/vision cognitive pipeline (local endpoint `localhost:1234`)
-- **StateTree:** `/Game/Foreman/ST_Foreman` — currently 5 states, 10 tasks, 4 transitions, 4 conditions, 1 evaluator. Will be restructured for SmartObjects integration.
+- **StateTree:** `/Game/Foreman/ST_Foreman` — 6 states (Root, Idle, Dispatch [group], Plan, Assign, Monitor), 4 tasks, 6 transitions, 2 enter conditions, 1 evaluator. Idle loop validated in PIE. Dispatch conditions currently check actor tags (pre-SmartObject stubs).
+- **StateTree wiring:** `DefaultStateTree` set via `ConstructorHelpers::FObjectFinder` in `AForeman_AIController` constructor. `BeginPlay` calls `SetStateTree()` + `StartLogic()` retry (OnPossess fires before SetStateTree during `Super::BeginPlay()`).
 - **Gait:** Walks by default. `bForceRun` bool on BP_FOREMAN_V2 for StateTree tasks needing urgency.
 
 **If StateTree doesn't start:** Check AIC_Foreman BeginPlay chain (child must call `Parent: Event BeginPlay` or have no BeginPlay node). Verify `bStartLogicAutomatically=True` on `StateTreeAIComponent`. Verify component references `ST_Foreman`, not another StateTree asset. Check Output Log for `LogStateTree` errors.
@@ -272,10 +273,10 @@ Verify counts in-editor — may have changed since last update.
 | `ForemanSurveyComponent.h/.cpp` | Secondary discovery for non-SmartObject interactables | Stable, reduced scope |
 | `IWytchInteractable.h/.cpp` | Base UInterface — anything interactable | Compiled ✓ |
 | `IWytchCarryable.h/.cpp` | UInterface — pickable/movable objects | Compiled ✓ |
-| `IWytchWorkSite.h/.cpp` | UInterface — work locations (`BeginWork`/`TickWork`/`EndWork` contract) | Updated — pending compile (old claim functions removed) |
-| `IWytchCommandable.h/.cpp` | UInterface — Foreman→worker commands (`ReceiveSmartObjectAssignment`, `GetWorkerState`, `GetCapabilities`, `AbortCurrentTask`) | New — pending compile |
-| `AndroidTypes.h/.cpp` | Enums (`EWorkerState`, `EAndroidPowerState`, `ESubsystemStatus`, `ESubsystemType`, `EAndroidReadiness`, `EAbortReason`, `EWorkEndReason`), `LogWytchAndroid` + `LogWytchWorker` log categories | New — pending compile |
-| `AndroidConditionComponent.h/.cpp` | `UAndroidConditionComponent` — power, structural HP, subsystem health, capability recalculation, personality seed | New — pending compile |
+| `IWytchWorkSite.h/.cpp` | UInterface — work locations (`BeginWork`/`TickWork`/`EndWork` contract) | Compiled ✓ |
+| `IWytchCommandable.h/.cpp` | UInterface — Foreman→worker commands (`ReceiveSmartObjectAssignment`, `GetWorkerState`, `GetCapabilities`, `AbortCurrentTask`) | Compiled ✓ |
+| `AndroidTypes.h/.cpp` | Enums (`EWorkerState`, `EAndroidPowerState`, `ESubsystemStatus`, `ESubsystemType`, `EAndroidReadiness`, `EAbortReason`, `EWorkEndReason`), `LogWytchAndroid` + `LogWytchWorker` log categories | Compiled ✓ |
+| `AndroidConditionComponent.h/.cpp` | `UAndroidConditionComponent` — power, structural HP, subsystem health, capability recalculation, personality seed | Compiled ✓ |
 | `CognitiveMapJsonLibrary.h/.cpp` | JSON read/write for cognitive map | Stable — don't touch |
 | `OllamaDebugActor.h/.cpp` | Debug LLM actor | Stable |
 | `OllamaDronePawn.h/.cpp` | Player pawn | Stable — don't touch |
@@ -378,19 +379,30 @@ These systems are still in the codebase but are being superseded by SmartObjects
 - [x] Updated `DefaultGameplayTags.ini` — 31 new tags (Capability, Task, Status, Mode hierarchies)
 - [x] Added `SmartObjectsModule` to `Build.cs`
 
-**⚠️ BLOCKING: Close editor → Build from Rider → Reopen editor**
-New files with `GENERATED_BODY()` + `Build.cs` module change = full restart required, no Live Coding.
+**~~⚠️ BLOCKING: Close editor → Build from Rider → Reopen editor~~** ✓ Done 2026-02-28
+~~New files with `GENERATED_BODY()` + `Build.cs` module change = full restart required, no Live Coding.~~
 After compile:
-- [ ] Verify all new files compile cleanly
-- [ ] Delete orphaned BP_WorkStation Blueprint overrides (TryClaim, ReleaseSite, GetClaimant, GetWorkType)
+- [x] Verify all new files compile cleanly ✓
+- [ ] Delete orphaned BP_WorkStation Blueprint overrides (TryClaim, ReleaseSite, GetClaimant, GetWorkType) — N/A (BP_WorkStation created fresh)
 
-**Roadmap Step 1: SmartObject Foundation (editor work by Ricky)**
-- [ ] Add `USmartObjectComponent` to `BP_WorkStation`
-- [ ] Create `SOD_Build` definition asset in `/Game/Foreman/SmartObjects/` with `Task.Build` slot tag
-- [ ] Assign `SOD_Build` as the definition on `BP_WorkStation`'s SmartObject component
-- [ ] PIE test: verify SmartObject subsystem sees the WorkStation and its available slot
+**Roadmap Step 1: SmartObject Foundation ✓ (completed 2026-02-28)**
+- [x] Created `/Game/Foreman/SmartObjects/SOD_Build` — SmartObjectDefinition with `Task.Build` activity tag, 1 slot, `GameplayInteractionSmartObjectBehaviorDefinition` default behavior
+- [x] Created `/Game/Foreman/BP_WorkStation` — Actor Blueprint with SmartObjectComponent (definition: SOD_Build), StaticMesh (placeholder cube), implements `IWytchWorkSite` interface
+- [x] Placed `WorkStation_Build_01` in NPCLevel near Foreman
+- [x] PIE verified: SmartObject subsystem registers the slot, claim/use/release cycle confirmed via LogSmartObject verbose
 
-**Roadmap Step 2: Foreman SmartObject Queries (do not start until Step 1 is validated)**
+**Phase 4 completion: ST_Foreman created and validated ✓ (2026-02-28)**
+- [x] Created `/Game/Foreman/ST_Foreman` — StateTree with StateTreeAIComponentSchema
+  - States: Root (group) → Idle, Dispatch (group) → Plan + Assign, Monitor
+  - Tasks: FForemanTask_Wait (Idle), FForemanTask_PlanJob (Plan), FForemanTask_AssignWorker (Assign), FForemanTask_Monitor (Monitor)
+  - Enter conditions on Dispatch: FForemanCondition_HasAvailableWork + FForemanCondition_HasIdleWorkers
+  - Global evaluator: FForemanEval_WorkAvailability (scans every 0.5s)
+  - Transitions: Idle→Root, Plan→Assign, Assign→Monitor, Monitor→Root, Plan→Root (fail), Assign→Root (fail)
+- [x] Wired into AIC_Foreman via `ConstructorHelpers::FObjectFinder` in constructor
+- [x] Fixed BeginPlay timing: `SetStateTree()` + `StartLogic()` retry after `Super::BeginPlay()` (OnPossess fires before SetStateTree)
+- [x] PIE verified: Foreman enters Idle, loops Wait 5s → re-evaluate Root → Dispatch conditions fail (no tagged workers) → Idle
+
+**Roadmap Step 2: Foreman SmartObject Queries (do not start until Step 1 is validated)** ← READY
 - [ ] Implement worker roster (Option A: RegisterWorker/UnregisterWorker on AIC_Foreman)
 - [ ] Add `GetOwnCondition()` to `AIC_Foreman` for self-monitoring
 - [ ] Refactor `FForemanTask_PlanJob` to query SmartObject subsystem

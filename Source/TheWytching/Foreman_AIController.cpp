@@ -9,14 +9,20 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "UObject/ConstructorHelpers.h"
 
 AForeman_AIController::AForeman_AIController()
 {
 	// StateTree AI Component — drives the Foreman decision tree
 	StateTreeAI = CreateDefaultSubobject<UStateTreeAIComponent>(TEXT("StateTreeAI"));
 
-	// DefaultStateTree will be set in the Blueprint or via CDO
-	// The actual StateTree asset assignment happens in BeginPlay or via editor
+	// Default StateTree asset — loaded from content
+	static ConstructorHelpers::FObjectFinder<UStateTree> DefaultTreeFinder(
+		TEXT("/Game/Foreman/ST_Foreman.ST_Foreman"));
+	if (DefaultTreeFinder.Succeeded())
+	{
+		DefaultStateTree = DefaultTreeFinder.Object;
+	}
 
 	// Perception — configured in ConfigurePerception() after construction
 	SetPerceptionComponent(*CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("ForemanPerception")));
@@ -58,6 +64,13 @@ void AForeman_AIController::BeginPlay()
 	{
 		StateTreeAI->SetStateTree(DefaultStateTree.Get());
 		UE_LOG(LogForeman, Log, TEXT("StateTree set to: %s"), *DefaultStateTree.Get()->GetName());
+
+		// OnPossess may have already tried StartLogic before SetStateTree — retry
+		if (!StateTreeAI->IsRunning())
+		{
+			StateTreeAI->StartLogic();
+			UE_LOG(LogForeman, Log, TEXT("StateTree StartLogic retried from BeginPlay"));
+		}
 	}
 	else if (StateTreeAI != nullptr && DefaultStateTree == nullptr)
 	{
