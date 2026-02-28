@@ -14,8 +14,10 @@ DerivedDataCache/
 # Saved files (logs, screenshots, etc)
 Saved/
 
-# Content (binary assets - too large for GitHub without LFS)
-Content/
+# Content/ is now tracked via Git LFS (.gitattributes)
+# Do NOT re-add Content/ here — binary assets must be version-controlled
+# Content/Developers/ contains per-user editor data, exclude it
+Content/Developers/
 
 # Visual Studio
 .vs/
@@ -52,17 +54,13 @@ EditorPreferences.ini
 *.sln.DotSettings.user
 *.uproject.DotSettings.user
 
-# Generated files
-Binaries/
-DerivedDataCache/
-Intermediate/
-Saved/
-.vs/
-
 # Local build/output diagnostics
 build_output*.txt
 build_check.txt
 
 # Local backup artifacts
 Backups/
+
+# Temp analysis scripts
+temp-*.js
 
