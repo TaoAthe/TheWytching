@@ -6,8 +6,8 @@
 
 class UStateTree;
 class UStateTreeAIComponent;
-class UAISenseConfig_Sight;
 class UForeman_BrainComponent;
+class UAndroidConditionComponent;
 
 UCLASS()
 class THEWYTCHING_API AForeman_AIController : public AAIController
@@ -28,6 +28,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Foreman")
 	UForeman_BrainComponent* GetForemanBrain() const { return ForemanBrain; }
 
+	UFUNCTION(BlueprintCallable, Category = "Foreman")
+	UAndroidConditionComponent* GetOwnCondition() const;
+
+	// Worker Roster
+	UFUNCTION(BlueprintCallable, Category = "Foreman|Workers")
+	void RegisterWorker(AActor* Worker);
+
+	UFUNCTION(BlueprintCallable, Category = "Foreman|Workers")
+	void UnregisterWorker(AActor* Worker);
+
+	// C++ accessor only — TWeakObjectPtr arrays are not Blueprint-compatible
+	const TArray<TWeakObjectPtr<AActor>>& GetRegisteredWorkers() const { return RegisteredWorkers; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Foreman|AI")
 	TObjectPtr<UStateTreeAIComponent> StateTreeAI;
@@ -38,6 +51,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Foreman|Brain")
 	TObjectPtr<UForeman_BrainComponent> ForemanBrain;
 
-private:
-	void ConfigurePerception();
+	UPROPERTY(VisibleAnywhere, Category = "Foreman|Workers")
+	TArray<TWeakObjectPtr<AActor>> RegisteredWorkers;
 };

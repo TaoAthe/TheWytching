@@ -4,6 +4,8 @@
 #include "StateTreeTaskBase.h"
 #include "StateTreeExecutionContext.h"
 #include "Animation/AnimMontage.h"
+#include "SmartObjectRuntime.h"
+#include "SmartObjectRequestTypes.h"
 #include "ForemanStateTreeTasks.generated.h"
 
 class AAIController;
@@ -34,6 +36,10 @@ USTRUCT()
 struct FForemanTask_PlanJobInstanceData : public FForemanTaskInstanceData
 {
 	GENERATED_BODY()
+
+	// Internal: the selected SmartObject slot result from scanning
+	UPROPERTY()
+	FSmartObjectRequestResult SelectedSlotResult;
 
 	// Internal: the selected work target from scanning
 	UPROPERTY()
@@ -76,7 +82,7 @@ struct THEWYTCHING_API FForemanTask_AssignWorker : public FStateTreeTaskCommonBa
 {
 	GENERATED_BODY()
 
-	using FInstanceDataType = FForemanTaskInstanceData;
+	using FInstanceDataType = FForemanTask_PlanJobInstanceData;
 
 	UPROPERTY(EditAnywhere, Category = "Animation")
 	TObjectPtr<UAnimMontage> Montage = nullptr;

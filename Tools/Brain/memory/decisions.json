@@ -1,0 +1,114 @@
+{
+  "schema_version": "1.0",
+  "tier": "FROZEN",
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "date": "2026-02-01",
+      "decision": "Use StateTree exclusively. Never Behavior Tree.",
+      "rationale": "StateTree offers cleaner phase separation and better editor tooling for this project's AI complexity. BT_Foreman archived as reference only.",
+      "applies_to": ["all_ai_modules", "foreman_ai", "worker_system"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["statetree", "behavior tree", "AI", "foreman", "phases"]
+    },
+    {
+      "id": "DEC-002",
+      "date": "2026-02-01",
+      "decision": "SmartObjects handle discovery and slot claiming. No custom scan/claim/release logic.",
+      "rationale": "Engine-native spatial queries and slot management are more robust and less code than custom systems. SmartObject subsystem auto-registers slots and handles lifecycle.",
+      "applies_to": ["foreman_ai", "worker_system", "workstation"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["smartobjects", "discovery", "claim", "release", "slot", "workstation"]
+    },
+    {
+      "id": "DEC-003",
+      "date": "2026-02-01",
+      "decision": "Foreman mediates all SmartObject assignments. Workers do NOT autonomously find SmartObjects.",
+      "rationale": "Preserves command hierarchy. Foreman is always the coordinator. Non-standard UE5 pattern — intentional, not debt.",
+      "applies_to": ["foreman_ai", "worker_system"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["foreman", "worker", "assignment", "smartobject", "dispatch", "command hierarchy"]
+    },
+    {
+      "id": "DEC-004",
+      "date": "2026-02-01",
+      "decision": "Worker holds the SmartObject claim, not the Foreman.",
+      "rationale": "Prevents Foreman from becoming a bottleneck. Foreman identifies the match and sends the claim handle. Worker holds the actual claim so failure/timeout releases automatically.",
+      "applies_to": ["foreman_ai", "worker_system"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["claim", "smartobject", "worker", "foreman", "handle", "slot"]
+    },
+    {
+      "id": "DEC-005",
+      "date": "2026-02-01",
+      "decision": "All AI, controllers, and shared data types in C++. Blueprint only for animations, designer-tweakable vars, and visual debug.",
+      "rationale": "AI logic must survive Blueprint graph changes and be deterministic. BP_FOREMAN_V2 is a thin shell by design.",
+      "applies_to": ["all_modules"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["C++", "Blueprint", "AI", "controller", "statetree", "interface"]
+    },
+    {
+      "id": "DEC-006",
+      "date": "2026-02-01",
+      "decision": "Two worker classes, not one: General Worker and AutoBot. Different physical capabilities, same IWytchCommandable contract.",
+      "rationale": "Generalists and specialists have fundamentally different capability sets. Same coordination protocol, different tags. Adding a new worker type = new tag set, not new code.",
+      "applies_to": ["worker_system"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["worker", "autobot", "general worker", "capability", "tags", "IWytchCommandable"]
+    },
+    {
+      "id": "DEC-007",
+      "date": "2026-02-01",
+      "decision": "UForeman_BrainComponent lives on AForeman_AIController, not on the Character.",
+      "rationale": "Controller persists across repossession. Placing cognitive components on the Character risks losing state on unpossess.",
+      "applies_to": ["foreman_ai"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["BrainComponent", "Foreman", "AIController", "controller", "character"]
+    },
+    {
+      "id": "DEC-008",
+      "date": "2026-02-27",
+      "decision": "IWytchWorkSite contract is BeginWork/TickWork/EndWork/GetTaskType/IsOperational/GetInteractionDuration. Old TryClaim/ReleaseSite/GetClaimant/GetWorkType removed.",
+      "rationale": "SmartObjects handle claiming. The interface should only define what happens during work, not who owns the slot. Claiming belongs to the subsystem.",
+      "applies_to": ["workstation", "worker_system"],
+      "made_by": "Ricky",
+      "relevance_keywords": ["IWytchWorkSite", "BeginWork", "TickWork", "EndWork", "TryClaim", "claim", "interface"]
+    },
+    {
+      "id": "DEC-009",
+      "date": "2026-03-08",
+      "decision": "IWytchInteractable is a PROTECTED class. Always check blast radius before any modification.",
+      "rationale": "Confirmed by live hierarchy (2026-03-09, 23 classes). IWytchInteractable has blast_radius_size 3 — the highest in the project. Direct dependents: IWytchCarryable, IWytchWorkSite, UForemanSurveyComponent. Transitive: anything that depends on IWytchCarryable or IWytchWorkSite (which includes all worker-object interaction code). Any signature change, added UFUNCTION, or modified return type propagates through the entire interaction layer. This is the foundational interface — it must be treated as a stable contract.",
+      "applies_to": ["interfaces", "workstation", "worker_system", "foreman_ai"],
+      "made_by": "Ricky",
+      "protection_level": "HIGH",
+      "blast_radius": {
+        "direct": ["IWytchCarryable", "IWytchWorkSite", "UForemanSurveyComponent"],
+        "source": "hierarchy_health.json — 2026-03-09T01:46:20Z",
+        "blast_radius_size": 3
+      },
+      "pre_modify_checklist": [
+        "Re-run generate_hierarchy.py to confirm current dependents",
+        "Identify every class in blast_radius that overrides any IWytchInteractable function",
+        "Confirm change does not break IWytchWorkSite BeginWork/TickWork/EndWork contract",
+        "Confirm change does not break IWytchCarryable pickup/carry contract",
+        "Check UForemanSurveyComponent — it queries IWytchInteractable via interface cast",
+        "Explicit Ricky approval required before committing"
+      ],
+      "relevance_keywords": ["IWytchInteractable", "interface", "blast radius", "protected", "IWytchCarryable", "IWytchWorkSite", "UForemanSurveyComponent", "interact"]
+    },
+    {
+      "id": "DEC-010",
+      "date": "2026-03-08",
+      "decision": "SmartObject subsystem queries are the authoritative ground truth for work availability. All tag-based world scans (GetAllActorsWithTag for workers/workstations) are dead ends and must not be added or re-added.",
+      "rationale": "Tag inference is fragile — tags can fall out of sync with actual game state, are not slot-aware, and bypass the SmartObject lifecycle. USmartObjectSubsystem::FindSmartObjects() + GetSlotState() == Free is the correct query path. Confirmed working in conditions layer (SES-004: HasIdleWorkers + HasAvailableWork) and evaluator layer (ScanWorld). Applying to tasks layer next (Steps 2f+2g). DE-004 fully retired.",
+      "applies_to": ["foreman_ai", "worker_system"],
+      "made_by": "Ricky",
+      "replaces_pattern": "GetAllActorsWithTag(World, 'Worker') + Tags.Contains('Idle') + Tags.AddUnique('Claimed')",
+      "canonical_pattern": "GetRegisteredWorkers() + IWytchCommandable::Execute_GetWorkerState() for workers; FindSmartObjects() + GetSlotState() for work",
+      "dead_end_ref": "DE-004",
+      "relevance_keywords": ["smartobject", "GetAllActorsWithTag", "tag", "scan", "FindSmartObjects", "GetSlotState", "DE-004", "conditions", "evaluator", "tasks", "HasAvailableWork", "HasIdleWorkers", "ScanWorld"]
+    }
+  ]
+}
+

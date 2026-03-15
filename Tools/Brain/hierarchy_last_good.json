@@ -1,0 +1,636 @@
+{
+  "schema_version": "1.0",
+  "saved": "2026-03-09T01:46:20.088213Z",
+  "note": "Last known good hierarchy \u2014 used as fallback if next build fails",
+  "class_count": 23,
+  "classes": {
+    "UAndroidConditionComponent": {
+      "type": "class",
+      "file": "Source\\TheWytching\\AndroidConditionComponent.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "ActorComponent",
+        "CoreMinimal",
+        "GameplayTagContainer",
+        "AndroidTypes"
+      ],
+      "dependents": [],
+      "properties": [
+        "BaseCapabilities",
+        "ActiveCapabilities",
+        "OnSubsystemChanged",
+        "OnPowerStateChanged"
+      ],
+      "functions": [
+        "RecalculateCapabilities",
+        "GetReadiness",
+        "SetSubsystemStatus",
+        "GetSubsystemStatus"
+      ],
+      "uses_gameplay_tags": true,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.064970Z",
+      "warnings": []
+    },
+    "UCognitiveMapJsonLibrary": {
+      "type": "class",
+      "file": "Source\\TheWytching\\CognitiveMapJsonLibrary.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "CoreMinimal",
+        "BlueprintFunctionLibrary"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [
+        "SaveCognitiveMapToJsonFile",
+        "BuildSensorReadoutFromJsonFile"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.065848Z",
+      "warnings": []
+    },
+    "FForemanCondition_HasIdleWorkers": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeConditions.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeConditionCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "StateTreeConditionBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "FStateTreeConditionCommonBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.066785Z",
+      "warnings": []
+    },
+    "FForemanCondition_HasAvailableWork": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeConditions.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeConditionCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "StateTreeConditionBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "FStateTreeConditionCommonBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.066834Z",
+      "warnings": []
+    },
+    "FForemanEval_WorkAvailability": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeEvaluators.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeEvaluatorCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "FStateTreeEvaluatorCommonBase",
+        "StateTreeEvaluatorBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067298Z",
+      "warnings": []
+    },
+    "FForemanTask_PlanJob": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeTasks.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeTaskCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "AnimMontage",
+        "FStateTreeTaskCommonBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "StateTreeTaskBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067774Z",
+      "warnings": []
+    },
+    "FForemanTask_AssignWorker": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeTasks.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeTaskCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "AnimMontage",
+        "FStateTreeTaskCommonBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "StateTreeTaskBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067824Z",
+      "warnings": []
+    },
+    "FForemanTask_Monitor": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeTasks.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeTaskCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "AnimMontage",
+        "FStateTreeTaskCommonBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "StateTreeTaskBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067864Z",
+      "warnings": []
+    },
+    "FForemanTask_Rally": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeTasks.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeTaskCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "AnimMontage",
+        "FStateTreeTaskCommonBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "StateTreeTaskBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067901Z",
+      "warnings": []
+    },
+    "FForemanTask_Wait": {
+      "type": "struct",
+      "file": "Source\\TheWytching\\ForemanStateTreeTasks.h",
+      "module": "thewytching",
+      "base_classes": [
+        "FStateTreeTaskCommonBase"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "AnimMontage",
+        "FStateTreeTaskCommonBase",
+        "CoreMinimal",
+        "StateTreeExecutionContext",
+        "StateTreeTaskBase"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.067935Z",
+      "warnings": []
+    },
+    "UForemanSurveyComponent": {
+      "type": "class",
+      "file": "Source\\TheWytching\\ForemanSurveyComponent.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "ActorComponent",
+        "CoreMinimal",
+        "APatrolPoint",
+        "IWytchInteractable"
+      ],
+      "dependents": [],
+      "properties": [
+        "PatrolPoints"
+      ],
+      "functions": [
+        "GetNextPatrolPoint",
+        "CountNearbyWorkers",
+        "GenerateStatusReport",
+        "DiscoverInteractables"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.068365Z",
+      "warnings": []
+    },
+    "AForeman_AIController": {
+      "type": "class",
+      "file": "Source\\TheWytching\\Foreman_AIController.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "AIController",
+        "UForeman_BrainComponent",
+        "CoreMinimal",
+        "UStateTree",
+        "UStateTreeAIComponent"
+      ],
+      "dependents": [],
+      "properties": [
+        "StateTreeAI",
+        "DefaultStateTree",
+        "ForemanBrain"
+      ],
+      "functions": [
+        "GetForemanBrain"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.068784Z",
+      "warnings": []
+    },
+    "UForeman_BrainComponent": {
+      "type": "class",
+      "file": "Source\\TheWytching\\Foreman_BrainComponent.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "HttpModule",
+        "ActorComponent",
+        "IHttpRequest",
+        "SceneCaptureComponent2D",
+        "AIPerceptionComponent",
+        "IHttpResponse",
+        "CoreMinimal"
+      ],
+      "dependents": [
+        "AForeman_AIController"
+      ],
+      "properties": [
+        "HeldActor",
+        "LastPerceivedActors",
+        "SceneCapture",
+        "PerceptionComponent",
+        "RenderTarget",
+        "SnapInterval",
+        "LMStudioURL"
+      ],
+      "functions": [
+        "OnTargetPerceptionUpdated"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [
+        "AForeman_AIController"
+      ],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.069121Z",
+      "warnings": []
+    },
+    "AForeman_Character": {
+      "type": "class",
+      "file": "Source\\TheWytching\\Foreman_Character.h",
+      "module": "thewytching",
+      "base_classes": [
+        "IAbilitySystemInterface"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "CoreMinimal",
+        "AbilitySystemInterface",
+        "IAbilitySystemInterface",
+        "Character"
+      ],
+      "dependents": [],
+      "properties": [
+        "AbilitySystemComponent"
+      ],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.069432Z",
+      "warnings": []
+    },
+    "IWytchCarryable": {
+      "type": "class",
+      "file": "Source\\TheWytching\\IWytchCarryable.h",
+      "module": "thewytching",
+      "base_classes": [
+        "IWytchInteractable"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "CoreMinimal",
+        "IWytchInteractable"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [
+        "OnPickedUp",
+        "OnPutDown",
+        "GetDeliveryLocation",
+        "IsAtDestination"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.069658Z",
+      "warnings": []
+    },
+    "IWytchCommandable": {
+      "type": "class",
+      "file": "Source\\TheWytching\\IWytchCommandable.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "SmartObjectRuntime",
+        "GameplayTagContainer",
+        "AndroidTypes",
+        "Interface",
+        "CoreMinimal"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [
+        "ReceiveSmartObjectAssignment",
+        "GetWorkerState",
+        "GetCapabilities",
+        "AbortCurrentTask"
+      ],
+      "uses_gameplay_tags": true,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.069899Z",
+      "warnings": []
+    },
+    "IWytchInteractable": {
+      "type": "class",
+      "file": "Source\\TheWytching\\IWytchInteractable.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "Interface",
+        "CoreMinimal"
+      ],
+      "dependents": [
+        "UForemanSurveyComponent",
+        "IWytchCarryable",
+        "IWytchWorkSite"
+      ],
+      "properties": [],
+      "functions": [
+        "GetInteractionType",
+        "IsInteractionAvailable",
+        "GetInteractionLocation"
+      ],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [
+        "IWytchCarryable",
+        "UForemanSurveyComponent",
+        "IWytchWorkSite"
+      ],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.070163Z",
+      "warnings": []
+    },
+    "IWytchWorkSite": {
+      "type": "class",
+      "file": "Source\\TheWytching\\IWytchWorkSite.h",
+      "module": "thewytching",
+      "base_classes": [
+        "IWytchInteractable"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "CoreMinimal",
+        "IWytchInteractable",
+        "GameplayTagContainer",
+        "AndroidTypes"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [
+        "GetTaskType",
+        "GetInteractionDuration",
+        "BeginWork",
+        "TickWork",
+        "EndWork",
+        "IsOperational"
+      ],
+      "uses_gameplay_tags": true,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.070432Z",
+      "warnings": []
+    },
+    "AOllamaDebugActor": {
+      "type": "class",
+      "file": "Source\\TheWytching\\OllamaDebugActor.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "Actor",
+        "HttpModule",
+        "IHttpRequest",
+        "SceneCaptureComponent2D",
+        "IHttpResponse",
+        "CoreMinimal"
+      ],
+      "dependents": [],
+      "properties": [
+        "SceneCapture",
+        "RenderTarget"
+      ],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.070721Z",
+      "warnings": []
+    },
+    "AOllamaDebugSpawner": {
+      "type": "class",
+      "file": "Source\\TheWytching\\OllamaDebugSpawner.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "Actor",
+        "CoreMinimal"
+      ],
+      "dependents": [],
+      "properties": [
+        "OllamaDebugActorClass"
+      ],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.070949Z",
+      "warnings": []
+    },
+    "AOllamaDronePawn": {
+      "type": "class",
+      "file": "Source\\TheWytching\\OllamaDronePawn.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "HttpModule",
+        "Pawn",
+        "BoxComponent",
+        "IHttpRequest",
+        "AISenseConfig_Sight",
+        "SceneCaptureComponent2D",
+        "AIPerceptionComponent",
+        "IHttpResponse",
+        "CoreMinimal"
+      ],
+      "dependents": [],
+      "properties": [
+        "BoxCollision",
+        "SceneCapture",
+        "DroneCamera",
+        "PerceptionComponent",
+        "RenderTarget",
+        "LastPerceivedActors"
+      ],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.071262Z",
+      "warnings": []
+    },
+    "APatrolPoint": {
+      "type": "class",
+      "file": "Source\\TheWytching\\PatrolPoint.h",
+      "module": "thewytching",
+      "base_classes": [],
+      "interfaces": [],
+      "depends_on": [
+        "Actor",
+        "CoreMinimal",
+        "UBillboardComponent"
+      ],
+      "dependents": [
+        "UForemanSurveyComponent"
+      ],
+      "properties": [
+        "Label",
+        "SceneRoot",
+        "Billboard"
+      ],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [
+        "UForemanSurveyComponent"
+      ],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.071669Z",
+      "warnings": []
+    },
+    "APC_Wytching": {
+      "type": "class",
+      "file": "Source\\TheWytching\\PC_Wytching.h",
+      "module": "thewytching",
+      "base_classes": [
+        "APlayerController"
+      ],
+      "interfaces": [],
+      "depends_on": [
+        "APlayerController",
+        "CoreMinimal",
+        "PlayerController"
+      ],
+      "dependents": [],
+      "properties": [],
+      "functions": [],
+      "uses_gameplay_tags": false,
+      "status": "stable",
+      "blast_radius": [],
+      "compile_verified": true,
+      "last_seen": "2026-03-09T01:46:20.071866Z",
+      "warnings": []
+    }
+  }
+}

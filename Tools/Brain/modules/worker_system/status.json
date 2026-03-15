@@ -1,0 +1,24 @@
+{
+  "module": "worker_system",
+  "schema_version": "1.0",
+  "status": "in_progress",
+  "last_updated": "2026-03-09T00:45:00Z",
+  "last_stable_commit": null,
+  "broken_since": null,
+  "depends_on": ["interfaces"],
+  "dependents": ["foreman_ai"],
+  "blast_radius": [],
+  "owner_surface": "Rider",
+  "changed_files": [
+    "Source/TheWytching/AutoBot_Character.h",
+    "Source/TheWytching/AutoBot_Character.cpp"
+  ],
+  "open_issues": [
+    "BP_AutoBot not yet created — HND-002 written to handshake.json, waiting for Aisling_BP after compile",
+    "Worker registration trigger undecided — Ricky to confirm: BP_AutoBot self-registers vs BP_FOREMAN_V2 finds by tag",
+    "Animation Blueprint for AutoBot not yet assigned — deferred per HND-002",
+    "No unified General Worker C++ class yet — Roadmap Step 5",
+    "BPI_WorkerCommand / BPI_WorkTarget Blueprint interfaces still in project — deprecated (DE-006), safe to delete after BP_AutoBot is created and verified"
+  ],
+  "notes": "AAutoBot_Character C++ class created (SES-005). Implements IWytchCommandable (ReceiveSmartObjectAssignment, GetWorkerState, GetCapabilities, AbortCurrentTask). Parent: ACharacter. Components: AndroidConditionComponent (power/health/capabilities). Navigation: AIController MoveToLocation + arrival timer → MarkSlotAsClaimed on arrival (DEC-004). Spec sent to Aisling_BP via HND-002. Must compile before BP creation. Step 3 complete after BP_AutoBot PIE verified."
+}

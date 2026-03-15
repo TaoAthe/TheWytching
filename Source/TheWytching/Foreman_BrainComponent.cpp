@@ -51,6 +51,9 @@ UForeman_BrainComponent::UForeman_BrainComponent()
 	, bHasSavedRotationSettings(false)
 	, SnapInterval(2.f)
 	, LMStudioURL(TEXT("http://localhost:1234/v1/chat/completions"))
+	, bBootRequested(false)
+	, bBooted(false)
+	, bPerceptionConfigured(false)
 {
 	// Tick drives the perception + state machine loop.
 	PrimaryComponentTick.bCanEverTick = true;
@@ -59,31 +62,74 @@ UForeman_BrainComponent::UForeman_BrainComponent()
 void UForeman_BrainComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	InitialiseComponents();
+	RequestBoot();
 }
 
-void UForeman_BrainComponent::InitialiseComponents()
+void UForeman_BrainComponent::RequestBoot()
+{
+	bBootRequested = true;
+	TryBoot();
+}
+
+bool UForeman_BrainComponent::TryBoot()
+{
+	if (bBooted)
+	{
+		return true;
+	}
+
+	if (!bBootRequested)
+	{
+		return false;
+	}
+
+	bBooted = InitialiseComponents();
+	return bBooted;
+}
+
+void UForeman_BrainComponent::ShutdownBoot()
+{
+	bBootRequested = false;
+	bBooted = false;
+	bPerceptionConfigured = false;
+
+	if (PerceptionComponent)
+	{
+		PerceptionComponent->OnTargetPerceptionInfoUpdated.RemoveDynamic(
+			this, &UForeman_BrainComponent::OnTargetPerceptionUpdated);
+	}
+
+	PerceivedRedCone = nullptr;
+	LastPerceivedActors.Reset();
+	SetState(EForemanState::Idle);
+}
+
+bool UForeman_BrainComponent::InitialiseComponents()
 {
 	AActor* Owner = GetOwner();
 	AActor* ForemanActor = GetForemanActor();
 	if (!Owner || !ForemanActor)
 	{
-		UE_LOG(LogTemp, Warning,
-			TEXT("Foreman: Brain initialise failed (Owner=%s ForemanActor=%s)"),
+		UE_LOG(LogTemp, Verbose,
+			TEXT("Foreman: Brain boot waiting (Owner=%s ForemanActor=%s)"),
 			Owner ? *Owner->GetName() : TEXT("None"),
 			ForemanActor ? *ForemanActor->GetName() : TEXT("None"));
-		return;
+		return false;
 	}
 
-	// Create render target
-	RenderTarget = NewObject<UTextureRenderTarget2D>(this);
-	RenderTarget->InitAutoFormat(256, 256);
-	RenderTarget->UpdateResourceImmediate(true);
+	if (!RenderTarget)
+	{
+		RenderTarget = NewObject<UTextureRenderTarget2D>(this);
+		RenderTarget->InitAutoFormat(256, 256);
+		RenderTarget->UpdateResourceImmediate(true);
+	}
 
-	// Find or create SceneCapture on head socket
-	SceneCapture = NewObject<USceneCaptureComponent2D>(ForemanActor,
-		TEXT("ForemanEye"));
-	SceneCapture->RegisterComponent();
+	if (!SceneCapture)
+	{
+		SceneCapture = NewObject<USceneCaptureComponent2D>(ForemanActor,
+			TEXT("ForemanEye"));
+		SceneCapture->RegisterComponent();
+	}
 
 	// Attach to head socket if skeletal mesh exists
 	USkeletalMeshComponent* Mesh =
@@ -102,7 +148,7 @@ void UForeman_BrainComponent::InitialiseComponents()
 			UE_LOG(LogTemp, Warning,
 				TEXT("Foreman: No root component for %s"),
 				*ForemanActor->GetName());
-			return;
+			return false;
 		}
 
 		SceneCapture->AttachToComponent(RootComponent,
@@ -115,50 +161,59 @@ void UForeman_BrainComponent::InitialiseComponents()
 	SceneCapture->bCaptureEveryFrame = false;
 	SceneCapture->bCaptureOnMovement = false;
 
-	// AIPerception: prefer controller ownership when available.
 	AActor* PerceptionOwner = Owner;
 	if (AForeman_AIController* Controller = GetForemanController())
 	{
 		PerceptionOwner = Controller;
 	}
 
-	PerceptionComponent =
-		PerceptionOwner->FindComponentByClass<UAIPerceptionComponent>();
+	if (!PerceptionComponent)
+	{
+		PerceptionComponent =
+			PerceptionOwner->FindComponentByClass<UAIPerceptionComponent>();
+	}
 	if (!PerceptionComponent)
 	{
 		PerceptionComponent = NewObject<UAIPerceptionComponent>(PerceptionOwner,
 			TEXT("ForemanPerception"));
 		PerceptionComponent->RegisterComponent();
 	}
-	UAIPerceptionSystem::RegisterPerceptionStimuliSource(
-		GetWorld(), UAISense_Sight::StaticClass(), GetOwner());
 
-	UAISenseConfig_Sight* SightConfig =
-		NewObject<UAISenseConfig_Sight>(PerceptionComponent);
-	SightConfig->SightRadius = 2000.f;
-	SightConfig->LoseSightRadius = 2500.f;
-	SightConfig->PeripheralVisionAngleDegrees = 60.f;
-	SightConfig->SetMaxAge(5.f);
-	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-	PerceptionComponent->ConfigureSense(*SightConfig);
-	PerceptionComponent->SetDominantSense(
-		SightConfig->GetSenseImplementation());
-	PerceptionComponent->RequestStimuliListenerUpdate();
+	if (!PerceptionComponent)
+	{
+		return false;
+	}
 
-	// Bind to the info-updated delegate that matches our handler signature.
-	PerceptionComponent->OnTargetPerceptionInfoUpdated.AddDynamic(
-		this, &UForeman_BrainComponent::OnTargetPerceptionUpdated);
+	if (!bPerceptionConfigured)
+	{
+		if (PerceptionComponent->GetListenerId() != FPerceptionListenerID::InvalidID())
+		{
+			ConfigurePerceptionSenses();
+			bPerceptionConfigured = true;
+		}
+		else
+		{
+			return false;
+		}
+	}
 
 	UE_LOG(LogTemp, Warning,
 		TEXT("Foreman: Kellan brain initialised, ready for commands"));
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
 		TEXT("Foreman Kellan: Ready"));
+	return true;
 }
 
 void UForeman_BrainComponent::IssueCommand(const FString& Command)
 {
+	if (!bBooted)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("Foreman: Ignoring command '%s' because brain is not booted yet"),
+			*Command);
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning,
 		TEXT("Foreman: IssueCommand called: %s"), *Command);
 	CurrentCommand = Command;
@@ -240,6 +295,15 @@ void UForeman_BrainComponent::TickComponent(float DeltaTime,
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!bBooted && bBootRequested)
+	{
+		TryBoot();
+		if (!bBooted)
+		{
+			return;
+		}
+	}
 
 	switch (CurrentState)
 	{
@@ -657,6 +721,34 @@ FString UForeman_BrainComponent::SanitizeJson(const FString& Raw)
 	return Clean;
 }
 
+void UForeman_BrainComponent::ConfigurePerceptionSenses()
+{
+	UAIPerceptionSystem::RegisterPerceptionStimuliSource(
+		GetWorld(), UAISense_Sight::StaticClass(), GetOwner());
+
+	UAISenseConfig_Sight* SightConfig =
+		NewObject<UAISenseConfig_Sight>(PerceptionComponent);
+	SightConfig->SightRadius = 2000.f;
+	SightConfig->LoseSightRadius = 2500.f;
+	SightConfig->PeripheralVisionAngleDegrees = 60.f;
+	SightConfig->SetMaxAge(5.f);
+	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
+	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	PerceptionComponent->ConfigureSense(*SightConfig);
+	PerceptionComponent->SetDominantSense(
+		SightConfig->GetSenseImplementation());
+
+	PerceptionComponent->OnTargetPerceptionInfoUpdated.RemoveDynamic(
+		this, &UForeman_BrainComponent::OnTargetPerceptionUpdated);
+	PerceptionComponent->OnTargetPerceptionInfoUpdated.AddDynamic(
+		this, &UForeman_BrainComponent::OnTargetPerceptionUpdated);
+
+	UE_LOG(LogTemp, Log,
+		TEXT("Foreman: Perception configured: sight radius=%.0f"),
+		SightConfig->SightRadius);
+}
+
 void UForeman_BrainComponent::OnTargetPerceptionUpdated(
 	const FActorPerceptionUpdateInfo& UpdateInfo)
 {
@@ -742,13 +834,7 @@ AForeman_AIController* UForeman_BrainComponent::GetForemanController()
 
 AActor* UForeman_BrainComponent::GetForemanActor() const
 {
-	APawn* Pawn = GetForemanPawn();
-	if (Pawn)
-	{
-		return Pawn;
-	}
-
-	return GetOwner();
+	return GetForemanPawn();
 }
 
 APawn* UForeman_BrainComponent::GetForemanPawn() const
@@ -793,8 +879,5 @@ FString UForeman_BrainComponent::RenderTargetToBase64()
 	TArray64<uint8> PNG = IW->GetCompressed(0);
 	return FBase64::Encode(PNG.GetData(), PNG.Num());
 }
-
-
-
 
 

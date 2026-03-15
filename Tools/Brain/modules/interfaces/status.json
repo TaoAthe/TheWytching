@@ -1,0 +1,24 @@
+{
+  "module": "interfaces",
+  "schema_version": "1.0",
+  "status": "stable",
+  "last_updated": "2026-03-08T00:00:00Z",
+  "last_stable_commit": null,
+  "broken_since": null,
+  "depends_on": [],
+  "dependents": ["foreman_ai", "worker_system", "workstation"],
+  "blast_radius": [],
+  "owner_surface": "Rider",
+  "protected_classes": [
+    {
+      "class": "IWytchInteractable",
+      "protection_level": "HIGH",
+      "reason": "Blast radius 3 — highest in project. Direct dependents: IWytchCarryable, IWytchWorkSite, UForemanSurveyComponent. Any signature change propagates through entire interaction layer.",
+      "decision_ref": "DEC-009",
+      "pre_modify": "Re-run hierarchy, audit all dependents, explicit Ricky approval required"
+    }
+  ],
+  "open_issues": [],
+  "notes": "All four IWytch* interfaces compiled clean 2026-02-28. IWytchInteractable is PROTECTED (DEC-009). Do not modify without checking all dependents."
+}
+

@@ -37,6 +37,12 @@ public:
 	// Called externally to give Kellan a task
 	void IssueCommand(const FString& Command);
 
+	// Boot lifecycle (safe to call multiple times)
+	void RequestBoot();
+	bool TryBoot();
+	void ShutdownBoot();
+	bool IsBooted() const { return bBooted; }
+
 private:
 	// State
 	EForemanState CurrentState;
@@ -83,7 +89,7 @@ private:
 	FString LMStudioURL;
 
 	// Vision
-	void InitialiseComponents();
+	bool InitialiseComponents();
 	void SnapAndAnalyse();
 	FString RenderTargetToBase64();
 	FString BuildPerceptionContext();
@@ -104,6 +110,8 @@ private:
 	void TickNavigating(float DeltaTime);
 
 	// Perception
+	void ConfigurePerceptionSenses();
+
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(const FActorPerceptionUpdateInfo& UpdateInfo);
 
@@ -112,5 +120,8 @@ private:
 	AActor* GetForemanActor() const;
 	APawn* GetForemanPawn() const;
 	class AForeman_AIController* GetForemanController();
-};
 
+	bool bBootRequested;
+	bool bBooted;
+	bool bPerceptionConfigured;
+};

@@ -1,0 +1,15 @@
+{
+  "module": "workstation",
+  "schema_version": "1.0",
+  "status": "stable",
+  "last_updated": "2026-03-08T00:00:00Z",
+  "last_stable_commit": null,
+  "broken_since": null,
+  "depends_on": ["interfaces"],
+  "dependents": ["foreman_ai"],
+  "blast_radius": [],
+  "owner_surface": "Rider",
+  "open_issues": [],
+  "notes": "BP_WorkStation + SOD_Build validated in PIE 2026-02-28. IWytchWorkSite contract stable (BeginWork/TickWork/EndWork). SmartObject slot registers and claims correctly."
+}
+

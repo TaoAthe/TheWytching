@@ -3,12 +3,16 @@
 #include "ForemanTypes.h"
 #include "Foreman_AIController.h"
 #include "Foreman_BrainComponent.h"
+#include "IWytchCommandable.h"
 #include "AIController.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "ForemanSurveyComponent.h"
 #include "Engine/Engine.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "SmartObjectSubsystem.h"
+#include "SmartObjectRuntime.h"
+#include "SmartObjectRequestTypes.h"
 
 namespace
 {
@@ -48,77 +52,98 @@ EStateTreeRunStatus FForemanTask_PlanJob::EnterState(
 	FInstanceDataType& Data = Context.GetInstanceData<FInstanceDataType>(*this);
 
 	APawn* Pawn = Data.Pawn.Get();
-	if (!Pawn)
+	if (!Pawn || !Pawn->GetWorld())
 	{
 		UE_LOG(LogForeman, Warning, TEXT("PlanJob: No pawn — failing"));
 		return EStateTreeRunStatus::Failed;
 	}
 
+	UWorld* World = Pawn->GetWorld();
+
 	PlayMontageOnPawn(Pawn, Montage);
-	// For now, scan by class name — workstations register with Foreman at BeginPlay
-	// and are tracked in BP_FOREMAN_V2's RegisteredWorkStations array.
-	// This C++ task will find them via world query.
 
-	const FVector ForemanLocation = Pawn->GetActorLocation();
-	float BestScore = TNumericLimits<float>::Max();
-	AActor* BestTarget = nullptr;
+	// ── 1. Find available SmartObject slots ──
+	// GetCurrent() returns null if the subsystem isn't ready — no further guard needed.
+	USmartObjectSubsystem* SOSubsystem = USmartObjectSubsystem::GetCurrent(World);
+	if (!SOSubsystem)
+	{
+		UE_LOG(LogForeman, Warning, TEXT("PlanJob: SmartObjectSubsystem unavailable"));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	FSmartObjectRequest Request;
+	Request.QueryBox = FBox::BuildAABB(Pawn->GetActorLocation(), FVector(5000.f));
+	TArray<FSmartObjectRequestResult> Results;
+	SOSubsystem->FindSmartObjects(Request, Results);
+
+	// Pick the closest Free slot
+	FSmartObjectRequestResult BestResult;
+	float BestDistSq = FLT_MAX;
+	bool bFoundSlot = false;
+
+	for (const FSmartObjectRequestResult& Result : Results)
+	{
+		if (SOSubsystem->GetSlotState(Result.SlotHandle) != ESmartObjectSlotState::Free)
+			continue;
+
+		TOptional<FTransform> SlotTransform = SOSubsystem->GetSlotTransform(Result);
+		if (!SlotTransform.IsSet()) continue;
+
+		const float DistSq = FVector::DistSquared(
+			Pawn->GetActorLocation(), SlotTransform.GetValue().GetLocation());
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestResult = Result;
+			bFoundSlot = true;
+		}
+	}
+
+	if (!bFoundSlot)
+	{
+		UE_LOG(LogForeman, Log, TEXT("PlanJob: No free SmartObject slots found"));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// ── 2. Find best idle worker from roster ──
+	AForeman_AIController* ForemanAIC = Cast<AForeman_AIController>(Pawn->GetController());
+	if (!ForemanAIC)
+	{
+		UE_LOG(LogForeman, Warning, TEXT("PlanJob: No AForeman_AIController on pawn"));
+		return EStateTreeRunStatus::Failed;
+	}
+
 	AActor* BestWorker = nullptr;
-
-	// Find available workstations (actors with tag "WorkStation")
-	TArray<AActor*> WorkStations;
-	UGameplayStatics::GetAllActorsWithTag(
-		Pawn->GetWorld(), FName(TEXT("WorkStation")), WorkStations);
-
-	for (AActor* WS : WorkStations)
+	for (const TWeakObjectPtr<AActor>& WeakWorker : ForemanAIC->GetRegisteredWorkers())
 	{
-		if (!WS) continue;
-
-		// Check availability via Blueprint-callable function
-		// For C++ interop, we use a simple tag/property check.
-		// TODO: Replace with interface call once BPI_WorkTarget is C++
-		bool bAvailable = !WS->Tags.Contains(FName(TEXT("Claimed")));
-		if (!bAvailable) continue;
-
-		float Distance = FVector::Dist(ForemanLocation, WS->GetActorLocation());
-		if (Distance < BestScore)
-		{
-			BestScore = Distance;
-			BestTarget = WS;
-		}
-	}
-
-	// Find idle workers (actors with tag "Worker" and state check)
-	TArray<AActor*> Workers;
-	UGameplayStatics::GetAllActorsWithTag(
-		Pawn->GetWorld(), FName(TEXT("Worker")), Workers);
-
-	for (AActor* Worker : Workers)
-	{
+		AActor* Worker = WeakWorker.Get();
 		if (!Worker) continue;
-
-		// TODO: Query GetWorkerState() via interface once BPI_WorkerCommand is C++
-		// For now, check a simple "Idle" tag
-		if (Worker->Tags.Contains(FName(TEXT("Idle"))))
+		if (IWytchCommandable* Commandable = Cast<IWytchCommandable>(Worker))
 		{
-			BestWorker = Worker;
-			break;
+			if (Commandable->Execute_GetWorkerState(Worker) == EWorkerState::Idle)
+			{
+				BestWorker = Worker;
+				break;  // First idle worker — capability matching added in Step 3
+			}
 		}
 	}
 
-	Data.SelectedWorkTarget = BestTarget;
+	if (!BestWorker)
+	{
+		UE_LOG(LogForeman, Log, TEXT("PlanJob: No idle workers in roster"));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// ── 3. Store result in InstanceData for AssignWorker task ──
+	Data.SelectedSlotResult = BestResult;
 	Data.SelectedWorker = BestWorker;
 
-	if (BestTarget && BestWorker)
-	{
-		UE_LOG(LogForeman, Log, TEXT("PlanJob: Selected target=%s worker=%s distance=%.0f"),
-			*BestTarget->GetName(), *BestWorker->GetName(), BestScore);
-		return EStateTreeRunStatus::Succeeded;
-	}
+	UE_LOG(LogForeman, Log, TEXT("PlanJob: Planned job — worker: %s"),
+		*BestWorker->GetName());
 
-	UE_LOG(LogForeman, Log, TEXT("PlanJob: No valid target/worker pair (targets=%d workers=%d)"),
-		WorkStations.Num(), Workers.Num());
-	return EStateTreeRunStatus::Failed;
+	return EStateTreeRunStatus::Succeeded;
 }
+
 
 EStateTreeRunStatus FForemanTask_PlanJob::Tick(
 	FStateTreeExecutionContext& Context,
@@ -139,60 +164,38 @@ EStateTreeRunStatus FForemanTask_AssignWorker::EnterState(
 	FInstanceDataType& Data = Context.GetInstanceData<FInstanceDataType>(*this);
 
 	APawn* Pawn = Data.Pawn.Get();
-	if (!Pawn)
+	AActor* Worker = Data.SelectedWorker.Get();
+	if (!Pawn || !Worker || !Pawn->GetWorld())
 	{
-		UE_LOG(LogForeman, Warning, TEXT("AssignWorker: No pawn — failing"));
+		UE_LOG(LogForeman, Warning, TEXT("AssignWorker: Missing pawn or worker"));
 		return EStateTreeRunStatus::Failed;
 	}
 
-	PlayMontageOnPawn(Pawn, Montage);
-
-	// Find the first unclaimed workstation
-	TArray<AActor*> WorkStations;
-	UGameplayStatics::GetAllActorsWithTag(
-		Pawn->GetWorld(), FName(TEXT("WorkStation")), WorkStations);
-
-	AActor* Target = nullptr;
-	for (AActor* WS : WorkStations)
+	USmartObjectSubsystem* SOSubsystem = USmartObjectSubsystem::GetCurrent(Pawn->GetWorld());
+	if (!SOSubsystem)
 	{
-		if (WS && !WS->Tags.Contains(FName(TEXT("Claimed"))))
-		{
-			Target = WS;
-			break;
-		}
-	}
-
-	// Find the first idle worker
-	TArray<AActor*> Workers;
-	UGameplayStatics::GetAllActorsWithTag(
-		Pawn->GetWorld(), FName(TEXT("Worker")), Workers);
-
-	AActor* Worker = nullptr;
-	for (AActor* W : Workers)
-	{
-		if (W && W->Tags.Contains(FName(TEXT("Idle"))))
-		{
-			Worker = W;
-			break;
-		}
-	}
-
-	if (!Target || !Worker)
-	{
-		UE_LOG(LogForeman, Warning, TEXT("AssignWorker: No unclaimed target or idle worker — failing"));
+		UE_LOG(LogForeman, Warning, TEXT("AssignWorker: SmartObjectSubsystem unavailable"));
 		return EStateTreeRunStatus::Failed;
 	}
 
-	// Claim the workstation and mark worker busy
-	Target->Tags.AddUnique(FName(TEXT("Claimed")));
-	Worker->Tags.Remove(FName(TEXT("Idle")));
+	// Notify the worker — worker will claim slot on arrival per DEC-004
+	if (IWytchCommandable* Commandable = Cast<IWytchCommandable>(Worker))
+	{
+		// Pass invalid ClaimHandle — worker claims on arrival (DEC-004)
+		Commandable->Execute_ReceiveSmartObjectAssignment(
+			Worker,
+			FSmartObjectClaimHandle::InvalidHandle,
+			Data.SelectedSlotResult.SlotHandle,
+			nullptr);  // TargetActor — optional, worker resolves from SlotHandle
 
-	UE_LOG(LogForeman, Log, TEXT("AssignWorker: Claimed %s, assigned %s (removed Idle tag)"),
-		*Target->GetName(), *Worker->GetName());
+		UE_LOG(LogForeman, Log, TEXT("AssignWorker: Sent assignment to %s"),
+			*Worker->GetName());
+		return EStateTreeRunStatus::Succeeded;
+	}
 
-	// TODO: Send Build command to worker via BPI_WorkerCommand once migrated to C++
-
-	return EStateTreeRunStatus::Succeeded;
+	UE_LOG(LogForeman, Warning, TEXT("AssignWorker: Worker %s does not implement IWytchCommandable"),
+		*Worker->GetName());
+	return EStateTreeRunStatus::Failed;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -329,9 +332,14 @@ EStateTreeRunStatus FForemanTask_Wait::EnterState(
 		if (ForemanAIC)
 		{
 			UForeman_BrainComponent* Brain = ForemanAIC->GetForemanBrain();
-			if (Brain)
+			if (Brain && Brain->IsBooted())
 			{
 				Brain->IssueCommand(TEXT("scan_environment"));
+			}
+			else
+			{
+				UE_LOG(LogForeman, Verbose,
+					TEXT("Wait: skipping LLM scan, ForemanBrain not booted yet"));
 			}
 		}
 	}

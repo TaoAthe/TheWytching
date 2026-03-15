@@ -1,6 +1,6 @@
 # TheWytching: Agent Context
 
-**Last updated:** 2026-02-28 (SmartObject foundation validated — Step 1 complete)
+**Last updated:** 2026-03-08 (Brain sync: verified all source files against Agent_Context.md; confirmed Step 2 is next active work)
 
 ---
 
@@ -53,6 +53,7 @@ Everything in this doc exists to make this loop work reliably with any number of
 - **DO NOT** expect Live Coding to handle new modules, plugins, or files with `GENERATED_BODY()`. These require full editor restart.
 - **DO NOT** place `UForeman_BrainComponent` on the Character. It lives on `AForeman_AIController`.
 - **DO NOT** modify anything in the Don't Touch list (below) without explicit developer instruction.
+- **DO NOT** create new .md files unless explicitly directed. Use existing documentation files (architecture.md, tasks.md, known_issues.md, upgrade_paths.md, coding_rules.md).
 
 ---
 
@@ -64,6 +65,18 @@ Everything in this doc exists to make this loop work reliably with any number of
 - **Blueprint compile:** In-editor, but **never during PIE**
 - **Include convention:** Use path-relative includes (`#include "Foreman/ForemanTypes.h"`), not engine-wide (`#include "Engine/Engine.h"`)
 - **Log convention:** `UE_LOG(LogForeman, Log, TEXT("..."));` — declared in `ForemanTypes.h`. `LogWytchAndroid` / `LogWytchWorker` declared in `AndroidTypes.h`. Never use `LogTemp` in project code.
+
+---
+
+## Project Documentation
+
+The following documentation files provide supplementary information:
+
+- **architecture.md** — Architectural design and technical structure
+- **upgrade_paths.md** — Version management and migration strategies
+- **tasks.md** — Active tasks, completed work, and backlog
+- **known_issues.md** — Current issues, resolved issues, and workarounds
+- **coding_rules.md** — Code style guidelines, best practices, and conventions
 
 ---
 
@@ -370,43 +383,47 @@ These systems are still in the codebase but are being superseded by SmartObjects
 ## Immediate Next Step (Start Here)
 
 > This section is ephemeral. Check items off as completed, then replace with the next active task.
+> **Brain synced 2026-03-08** — all source files read and verified against this doc.
 
-- [x] Restart Unreal Editor — IWytch* interfaces compiled ✓
-- [x] Created `AndroidTypes.h/.cpp` — all enums + log categories
-- [x] Created `AndroidConditionComponent.h/.cpp` — full degradation component
-- [x] Created `IWytchCommandable.h/.cpp` — Foreman→worker command interface
-- [x] Updated `IWytchWorkSite.h` — removed old claim functions, added BeginWork/TickWork/EndWork contract
-- [x] Updated `DefaultGameplayTags.ini` — 31 new tags (Capability, Task, Status, Mode hierarchies)
-- [x] Added `SmartObjectsModule` to `Build.cs`
+### ✅ Completed (verified in source 2026-03-08)
 
-**~~⚠️ BLOCKING: Close editor → Build from Rider → Reopen editor~~** ✓ Done 2026-02-28
-~~New files with `GENERATED_BODY()` + `Build.cs` module change = full restart required, no Live Coding.~~
-After compile:
-- [x] Verify all new files compile cleanly ✓
-- [ ] Delete orphaned BP_WorkStation Blueprint overrides (TryClaim, ReleaseSite, GetClaimant, GetWorkType) — N/A (BP_WorkStation created fresh)
+- [x] `AndroidTypes.h/.cpp` — `EWorkerState`, `EAndroidPowerState`, `ESubsystemStatus`, `ESubsystemType`, `EAndroidReadiness`, `EAbortReason`, `EWorkEndReason`, `LogWytchAndroid`, `LogWytchWorker` — **compiled ✓**
+- [x] `AndroidConditionComponent.h/.cpp` — power, structural HP, subsystem health, capability recalculation — **compiled ✓**
+- [x] `IWytchInteractable.h/.cpp` — base UInterface — **compiled ✓**
+- [x] `IWytchCarryable.h/.cpp` — pickable/movable objects — **compiled ✓**
+- [x] `IWytchWorkSite.h/.cpp` — `GetTaskType`, `GetInteractionDuration`, `BeginWork`, `TickWork`, `EndWork`, `IsOperational` — old claim functions removed — **compiled ✓**
+- [x] `IWytchCommandable.h/.cpp` — `ReceiveSmartObjectAssignment`, `GetWorkerState`, `GetCapabilities`, `AbortCurrentTask` — **compiled ✓**
+- [x] `ForemanTypes.h/.cpp` — `LogForeman` log category — **compiled ✓**
+- [x] `AIC_Foreman` — StateTreeAI + BrainComponent + Perception; FObjectFinder wires `ST_Foreman`; BeginPlay + OnPossess retry logic for StateTree startup — **compiled ✓**
+- [x] `ForemanStateTreeTasks.h/.cpp` — `PlanJob`, `AssignWorker`, `Monitor`, `Rally`, `Wait` — **compiled ✓** (tag-based stubs, pre-Step 2)
+- [x] `ForemanStateTreeConditions.h/.cpp` — `HasIdleWorkers`, `HasAvailableWork` — **compiled ✓** (tag-based stubs, pre-Step 2)
+- [x] `ForemanStateTreeEvaluators.h/.cpp` — `WorkAvailability` (0.5s tick, tag-based) — **compiled ✓** (tag-based stub, pre-Step 2)
+- [x] `DefaultGameplayTags.ini` — 31 tags: `Capability.*`, `Task.*`, `Status.*`, `Mode.*`
+- [x] `Build.cs` — `SmartObjectsModule` added
+- [x] `/Game/Foreman/SmartObjects/SOD_Build` — SmartObjectDefinition, `Task.Build` tag, 1 slot
+- [x] `/Game/Foreman/BP_WorkStation` — Actor Blueprint, SmartObjectComponent, `IWytchWorkSite`
+- [x] `WorkStation_Build_01` placed in NPCLevel
+- [x] `/Game/Foreman/ST_Foreman` — Root→Idle→Dispatch(Plan+Assign)→Monitor; evaluator wired; PIE validated
+- [x] PIE validated: StateTree starts, Foreman enters Idle, Wait 5s loops, Dispatch conditions fire (fail as expected — no tagged workers yet)
 
-**Roadmap Step 1: SmartObject Foundation ✓ (completed 2026-02-28)**
-- [x] Created `/Game/Foreman/SmartObjects/SOD_Build` — SmartObjectDefinition with `Task.Build` activity tag, 1 slot, `GameplayInteractionSmartObjectBehaviorDefinition` default behavior
-- [x] Created `/Game/Foreman/BP_WorkStation` — Actor Blueprint with SmartObjectComponent (definition: SOD_Build), StaticMesh (placeholder cube), implements `IWytchWorkSite` interface
-- [x] Placed `WorkStation_Build_01` in NPCLevel near Foreman
-- [x] PIE verified: SmartObject subsystem registers the slot, claim/use/release cycle confirmed via LogSmartObject verbose
+### ⚠️ Code Reality Check (2026-03-08)
 
-**Phase 4 completion: ST_Foreman created and validated ✓ (2026-02-28)**
-- [x] Created `/Game/Foreman/ST_Foreman` — StateTree with StateTreeAIComponentSchema
-  - States: Root (group) → Idle, Dispatch (group) → Plan + Assign, Monitor
-  - Tasks: FForemanTask_Wait (Idle), FForemanTask_PlanJob (Plan), FForemanTask_AssignWorker (Assign), FForemanTask_Monitor (Monitor)
-  - Enter conditions on Dispatch: FForemanCondition_HasAvailableWork + FForemanCondition_HasIdleWorkers
-  - Global evaluator: FForemanEval_WorkAvailability (scans every 0.5s)
-  - Transitions: Idle→Root, Plan→Assign, Assign→Monitor, Monitor→Root, Plan→Root (fail), Assign→Root (fail)
-- [x] Wired into AIC_Foreman via `ConstructorHelpers::FObjectFinder` in constructor
-- [x] Fixed BeginPlay timing: `SetStateTree()` + `StartLogic()` retry after `Super::BeginPlay()` (OnPossess fires before SetStateTree)
-- [x] PIE verified: Foreman enters Idle, loops Wait 5s → re-evaluate Root → Dispatch conditions fail (no tagged workers) → Idle
+The StateTree tasks/conditions/evaluator are **currently using tag-based queries** (`GetAllActorsWithTag("Worker")`, `GetAllActorsWithTag("WorkStation")`, `Tags.Contains("Idle")`, `Tags.Contains("Claimed")`). These are the pre-Step-2 stubs. All `// TODO` comments in `.cpp` files confirm this. **This is expected — Step 2 replaces all of this.**
 
-**Roadmap Step 2: Foreman SmartObject Queries (do not start until Step 1 is validated)** ← READY
-- [ ] Implement worker roster (Option A: RegisterWorker/UnregisterWorker on AIC_Foreman)
-- [ ] Add `GetOwnCondition()` to `AIC_Foreman` for self-monitoring
-- [ ] Refactor `FForemanTask_PlanJob` to query SmartObject subsystem
-- [ ] Refactor `FForemanCondition_HasAvailableWork` to query SmartObject subsystem
-- [ ] Refactor `FForemanCondition_HasIdleWorkers` to query worker roster via `IWytchCommandable::GetWorkerState()`
-- [ ] Refactor `FForemanEval_WorkAvailability` to SmartObject queries on timer
-- [ ] Refactor `FForemanTask_AssignWorker` to send `FSmartObjectClaimHandle` + `FSmartObjectSlotHandle` + TargetActor via `IWytchCommandable`
+`AIC_Foreman` currently has **no worker roster** (`RegisteredWorkers` array does not exist yet). `GetOwnCondition()` does not exist yet. Both are Step 2 additions.
+
+### 🎯 Active: Roadmap Step 2 — Foreman SmartObject Queries
+
+**Compile strategy:** All Step 2 changes are to *existing* files only → **Live Coding OK** (no new modules, no new files with `GENERATED_BODY()` needed unless adding new structs to existing headers).
+
+**Order matters — do these in sequence:**
+
+- [ ] **2a.** Add `RegisterWorker` / `UnregisterWorker` + `TArray<TWeakObjectPtr<AActor>> RegisteredWorkers` to `AIC_Foreman` (`.h` + `.cpp`)
+- [ ] **2b.** Add `GetOwnCondition()` to `AIC_Foreman` — returns `UAndroidConditionComponent*` from possessed pawn if present
+- [ ] **2c.** Refactor `FForemanEval_WorkAvailability::ScanWorld()` — replace tag scans:
+  - Workers: iterate `RegisteredWorkers`, call `IWytchCommandable::GetWorkerState()`
+  - WorkStations: query `USmartObjectSubsystem::FindSmartObjects()` with `Task.Build` filter (use `FGameplayTagQuery::MakeQuery_MatchAnyTags()`)
+- [ ] **2d.** Refactor `FForemanCondition_HasIdleWorkers::TestCondition()` — use evaluator output (`IdleWorkerCount > 0`) or direct roster query
+- [ ] **2e.** Refactor `FForemanCondition_HasAvailableWork::TestCondition()` — use `USmartObjectSubsystem` query for unclaimed slots
+- [ ] **2f.** Refactor `FForemanTask_PlanJob::EnterState()` — SmartObject subsystem query for available `Task.Build` slot; match against idle registered worker by capability tags
+- [ ] **2g.** Refactor `FForemanTask_AssignWorker::EnterState()` — send `FSmartObjectClaimHandle` + `FSmartObjectSlotHandle` + `TargetActor` to worker via `IWytchCommandable::ReceiveSmartObjectAssignment()`

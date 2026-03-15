@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "generated": "2026-03-09T01:46:20.087641Z",
+  "total_classes": 23,
+  "stable_classes": 23,
+  "broken_classes": [],
+  "modules_found": [
+    "thewytching"
+  ],
+  "highest_blast_radius": [
+    {
+      "class": "IWytchInteractable",
+      "blast_radius_size": 3
+    },
+    {
+      "class": "UForeman_BrainComponent",
+      "blast_radius_size": 1
+    },
+    {
+      "class": "APatrolPoint",
+      "blast_radius_size": 1
+    },
+    {
+      "class": "UAndroidConditionComponent",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "UCognitiveMapJsonLibrary",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "FForemanCondition_HasIdleWorkers",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "FForemanCondition_HasAvailableWork",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "FForemanEval_WorkAvailability",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "FForemanTask_PlanJob",
+      "blast_radius_size": 0
+    },
+    {
+      "class": "FForemanTask_AssignWorker",
+      "blast_radius_size": 0
+    }
+  ],
+  "parse_errors": [],
+  "status": "clean"
+}

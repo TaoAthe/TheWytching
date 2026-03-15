@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "tier": "FROZEN",
+  "patterns": [
+    {
+      "id": "PAT-001",
+      "pattern": "StateTree startup timing: OnPossess fires before SetStateTree during Super::BeginPlay()",
+      "solution": "In AIC_Foreman BeginPlay: call Super::BeginPlay() first, then SetStateTree() + StartLogic() with IsRunning() guard. Also add StartLogic() retry in OnPossess with IsRunning() guard.",
+      "observed_in": ["foreman_ai"],
+      "confidence": "high — confirmed fix, PIE validated 2026-02-28",
+      "relevance_keywords": ["StateTree", "StartLogic", "OnPossess", "BeginPlay", "AIController", "timing"]
+    },
+    {
+      "id": "PAT-002",
+      "pattern": "New C++ files with GENERATED_BODY() or Build.cs module changes require full editor restart",
+      "solution": "Close UE editor → Build from Rider → Reopen editor. Live Coding only for changes to existing .cpp/.h files with no new GENERATED_BODY() macros.",
+      "observed_in": ["all_modules"],
+      "confidence": "high — UE5 rule, never changes",
+      "relevance_keywords": ["GENERATED_BODY", "Build.cs", "module", "compile", "Live Coding", "restart", "Rider"]
+    },
+    {
+      "id": "PAT-003",
+      "pattern": "SmartObject slot transform for navmesh targeting",
+      "solution": "Use GetSlotTransform(RequestResult) → TOptional<FTransform> — not the actor location. The slot may be offset from the owning actor.",
+      "observed_in": ["foreman_ai", "worker_system"],
+      "confidence": "high — engine source verified",
+      "relevance_keywords": ["SmartObject", "GetSlotTransform", "navigation", "slot", "transform", "FTransform"]
+    }
+  ]
+}
+

@@ -23,11 +23,14 @@ AForeman_Character::AForeman_Character()
 	// Set up skeletal mesh (using UE5 Mannequin as default)
 	if (USkeletalMeshComponent* SkeletalMesh = GetMesh())
 	{
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> MeshAsset(
-			TEXT("SkeletalMesh'/Game/Characters/Mannequins/Humanoids/SK_Mannequin.SK_Mannequin'"));
-		if (MeshAsset.Succeeded())
+		// Use FObjectFinderOptional to avoid engine hard-errors when the referenced
+		// default mannequin asset is not present in the project (helps Live Coding
+		// and CDO construction in builds that don't include the asset).
+		static ConstructorHelpers::FObjectFinderOptional<USkeletalMesh> MeshAsset(
+				TEXT("/Game/Characters/Mannequins/Humanoids/SK_Mannequin.SK_Mannequin"));
+		if (MeshAsset.Succeeded() && MeshAsset.Get())
 		{
-			SkeletalMesh->SetSkeletalMesh(MeshAsset.Object);
+			SkeletalMesh->SetSkeletalMesh(MeshAsset.Get());
 			SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			SkeletalMesh->SetRelativeLocation(FVector(0.f, 0.f, -88.f));
 			UE_LOG(LogForeman, Log, TEXT("SK_Mannequin mesh loaded successfully"));

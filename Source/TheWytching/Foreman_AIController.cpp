@@ -1,11 +1,11 @@
 #include "Foreman_AIController.h"
 
+#include "AndroidConditionComponent.h"
 #include "ForemanTypes.h"
 #include "Foreman_BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "StateTree.h"
 #include "Perception/AIPerceptionComponent.h"
-#include "Perception/AISenseConfig_Sight.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -24,52 +24,31 @@ AForeman_AIController::AForeman_AIController()
 		DefaultStateTree = DefaultTreeFinder.Object;
 	}
 
-	// Perception — configured in ConfigurePerception() after construction
+	// Perception — configured by ForemanBrain (sole owner of perception config)
 	SetPerceptionComponent(*CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("ForemanPerception")));
 
 	// Brain Component — LLM/vision cognitive pipeline
 	ForemanBrain = CreateDefaultSubobject<UForeman_BrainComponent>(TEXT("ForemanBrain"));
 }
 
-void AForeman_AIController::ConfigurePerception()
-{
-	UAIPerceptionComponent* Perception = GetPerceptionComponent();
-	if (!Perception)
-	{
-		return;
-	}
-
-	// Sight sense
-	UAISenseConfig_Sight* SightConfig = NewObject<UAISenseConfig_Sight>(Perception);
-	SightConfig->SightRadius = 3000.f;
-	SightConfig->LoseSightRadius = 3500.f;
-	SightConfig->PeripheralVisionAngleDegrees = 90.f;
-	SightConfig->SetMaxAge(10.f);
-	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-
-	Perception->ConfigureSense(*SightConfig);
-	Perception->SetDominantSense(SightConfig->GetSenseImplementation());
-
-	UE_LOG(LogForeman, Log, TEXT("Perception configured: sight radius=%.0f"), SightConfig->SightRadius);
-}
-
 void AForeman_AIController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Set the StateTree from the DefaultStateTree property if set
+	if (ForemanBrain)
+	{
+		ForemanBrain->RequestBoot();
+	}
+
+	// Set the StateTree from the DefaultStateTree property if not already running
 	if (StateTreeAI != nullptr && DefaultStateTree != nullptr)
 	{
-		StateTreeAI->SetStateTree(DefaultStateTree.Get());
-		UE_LOG(LogForeman, Log, TEXT("StateTree set to: %s"), *DefaultStateTree.Get()->GetName());
-
-		// OnPossess may have already tried StartLogic before SetStateTree — retry
 		if (!StateTreeAI->IsRunning())
 		{
+			StateTreeAI->SetStateTree(DefaultStateTree.Get());
+			UE_LOG(LogForeman, Log, TEXT("StateTree set to: %s"), *DefaultStateTree.Get()->GetName());
 			StateTreeAI->StartLogic();
-			UE_LOG(LogForeman, Log, TEXT("StateTree StartLogic retried from BeginPlay"));
+			UE_LOG(LogForeman, Log, TEXT("StateTree StartLogic from BeginPlay"));
 		}
 	}
 	else if (StateTreeAI != nullptr && DefaultStateTree == nullptr)
@@ -82,6 +61,11 @@ void AForeman_AIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
+	if (ForemanBrain)
+	{
+		ForemanBrain->RequestBoot();
+	}
+
 	// Ensure walking movement mode
 	if (ACharacter* PossessedCharacter = Cast<ACharacter>(InPawn))
 	{
@@ -93,9 +77,6 @@ void AForeman_AIController::OnPossess(APawn* InPawn)
 			}
 		}
 	}
-
-	// Configure perception now that we have a pawn
-	ConfigurePerception();
 
 
 	// Diagnostic: verify runtime class matches schema expectations
@@ -122,6 +103,10 @@ void AForeman_AIController::OnPossess(APawn* InPawn)
 void AForeman_AIController::OnUnPossess()
 {
 	UE_LOG(LogForeman, Log, TEXT("AIController unpossessing"));
+	if (ForemanBrain)
+	{
+		ForemanBrain->ShutdownBoot();
+	}
 	Super::OnUnPossess();
 }
 
@@ -169,4 +154,38 @@ void AForeman_AIController::ExecuteMoveToActor(AActor* Target)
 
 	UE_LOG(LogForeman, Log, TEXT("MoveToActor result=%d target=%s"),
 		static_cast<int32>(Result), *Target->GetName());
+}
+
+void AForeman_AIController::RegisterWorker(AActor* Worker)
+{
+	if (!Worker) return;
+	// Avoid duplicates
+	for (const TWeakObjectPtr<AActor>& Entry : RegisteredWorkers)
+	{
+		if (Entry.Get() == Worker) return;
+	}
+	RegisteredWorkers.Add(Worker);
+	UE_LOG(LogForeman, Log, TEXT("RegisterWorker: %s — roster size: %d"),
+		*Worker->GetName(), RegisteredWorkers.Num());
+}
+
+void AForeman_AIController::UnregisterWorker(AActor* Worker)
+{
+	if (!Worker) return;
+	const int32 Before = RegisteredWorkers.Num();
+	RegisteredWorkers.RemoveAll([Worker](const TWeakObjectPtr<AActor>& Entry)
+	{
+		return !Entry.IsValid() || Entry.Get() == Worker;
+	});
+	UE_LOG(LogForeman, Log, TEXT("UnregisterWorker: %s — roster size: %d -> %d"),
+		*Worker->GetName(), Before, RegisteredWorkers.Num());
+}
+
+UAndroidConditionComponent* AForeman_AIController::GetOwnCondition() const
+{
+	if (APawn* OwnedPawn = GetPawn())
+	{
+		return OwnedPawn->FindComponentByClass<UAndroidConditionComponent>();
+	}
+	return nullptr;
 }

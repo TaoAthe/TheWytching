@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "modules": {
+    "interfaces": {
+      "depends_on": [],
+      "dependents": ["foreman_ai", "worker_system", "workstation"],
+      "description": "All IWytch* C++ UInterfaces: IWytchInteractable, IWytchCarryable, IWytchWorkSite, IWytchCommandable. Foundation layer — everything depends on this."
+    },
+    "workstation": {
+      "depends_on": ["interfaces"],
+      "dependents": ["foreman_ai"],
+      "description": "BP_WorkStation + SOD_Build SmartObjectDefinition. Work target side of the loop. Implements IWytchWorkSite."
+    },
+    "worker_system": {
+      "depends_on": ["interfaces"],
+      "dependents": ["foreman_ai"],
+      "description": "Worker actors (BP_AutoBot, SandboxCharacter_Mover), AndroidConditionComponent, AndroidTypes. Future: unified General Worker C++ class."
+    },
+    "foreman_ai": {
+      "depends_on": ["interfaces", "worker_system", "workstation"],
+      "dependents": [],
+      "description": "AForeman_AIController + StateTree tasks/conditions/evaluator + BrainComponent. The orchestration layer."
+    }
+  }
+}
+

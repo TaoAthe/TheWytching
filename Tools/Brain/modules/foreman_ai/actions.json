@@ -1,0 +1,31 @@
+{
+  "module": "foreman_ai",
+  "schema_version": "1.0",
+  "actions": [
+    {
+      "id": "ACT-001",
+      "status": "pending",
+      "priority": "high",
+      "intent": "Step 2: Refactor all Foreman StateTree logic from tag-based stubs to SmartObject subsystem queries and worker roster",
+      "routing": "C++",
+      "steps": [
+        "2a: Add RegisterWorker/UnregisterWorker + TArray<TWeakObjectPtr<AActor>> RegisteredWorkers to AIC_Foreman",
+        "2b: Add GetOwnCondition() to AIC_Foreman",
+        "2c: Refactor ForemanEval_WorkAvailability::ScanWorld() — roster + IWytchCommandable for workers, FindSmartObjects for work",
+        "2d: Refactor FForemanCondition_HasIdleWorkers — use roster query",
+        "2e: Refactor FForemanCondition_HasAvailableWork — use SmartObject subsystem",
+        "2f: Refactor FForemanTask_PlanJob — SmartObject query + capability tag matching",
+        "2g: Refactor FForemanTask_AssignWorker — send ClaimHandle + SlotHandle + TargetActor via IWytchCommandable"
+      ],
+      "agent": "aisling_rider",
+      "blast_radius": ["worker_system", "workstation"],
+      "open_questions": [
+        "Search radius for SmartObject query in PlanJob — what value? (suggest 5000 units as default)",
+        "Step 2 conditions will still fail until Step 3 adds a worker that implements IWytchCommandable — expected behavior"
+      ],
+      "created": "2026-03-08T00:00:00Z",
+      "completed": null
+    }
+  ]
+}
+

@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "tier": "HOT",
+  "session_id": "SES-006",
+  "project": "TheWytching",
+  "session_start": "2026-03-09T19:05:00Z",
+  "session_end": "2026-03-09T19:45:00Z",
+  "session_status": "SUSPENDED — build failed at shutdown. Do not resume PIE. Rider diagnoses first.",
+  "current_task": "ForemanStateTreeConditions.cpp compile error — diagnose on next boot before anything else.",
+  "current_module": "foreman_ai",
+  "open_tensions": [
+    "ForemanStateTreeConditions.cpp — BUILD FAILED. First priority next session.",
+    "Dispatch transition (Idle→Dispatch) not firing — three suspects logged in COLD_START_SES007.md",
+    "ForemanTask_Monitor still uses GetAllActorsWithTag + 'Claimed' tag — DE-004 residue, low priority"
+  ],
+  "watching": [
+    "IWytchInteractable — PROTECTED (DEC-009). Blast radius 3. No changes this session."
+  ],
+  "fixes_this_session": [
+    "ForemanStateTreeEvaluators.cpp: TreeStart no longer force-scans on start (Bug A — confirmed fixed HND-006)",
+    "ForemanStateTreeEvaluators.cpp + ForemanStateTreeTasks.cpp: FindSmartObjects gated behind GetCurrent() null check (Bug B — confirmed fixed HND-006)",
+    "ForemanStateTreeConditions.cpp: diagnostic logs added to HasIdleWorkers + HasAvailableWork (build failed on this change)"
+  ],
+  "steps_complete": ["2a", "2b", "2c", "2d", "2e", "2f", "2g", "3a-fix"],
+  "backup_last_run": "2026-03-09T19:20:00Z",
+  "next_logical_step": "Fix ForemanStateTreeConditions.cpp compile error. Rebuild. Hand off HND-007 retest to Aisling_BP.",
+  "cold_start_package": "Tools/Brain/COLD_START_SES007.md",
+  "last_updated": "2026-03-09T19:45:00Z"
+}

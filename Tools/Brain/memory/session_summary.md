@@ -1,0 +1,98 @@
+# TheWytching — Session Summary
+### WARM Tier — Compressed History
+`Last rewrite: 2026-03-08 · SES-001 compressed`
+
+---
+
+## Session Header Template
+```
+### SES-NNN  [YYYY-MM-DD]
+Hierarchy: [CURRENT N classes | REGENERATED N classes — reason]
+Tokens: [consumed] consumed / [remaining] remaining at boot
+Modules touched: [list]
+Missions opened/closed: [MSN-NNN or none]
+Summary: [2–4 sentences]
+```
+
+---
+
+### SES-001  2026-03-08
+Hierarchy: REGENERATED 23 classes — first run, hierarchy_health.json missing. Clean: 0 broken, 0 parse errors.
+Tokens: ~58,000 consumed / ~70,000 remaining (heavy bootstrap session)
+Modules touched: interfaces, workstation, worker_system, foreman_ai (brain files only — no C++ changed)
+Missions opened: none
+Missions closed: none
+
+**What happened:**
+Full brain bootstrap for TheWytching from `Agent_Context.md` seed. All FROZEN memory crystallised (8 decisions, 6 dead ends, 3 patterns). 4 module cells created. Hierarchy generated. Step 1a (hierarchy health check) added to global boot protocol — `generate_hierarchy.py` runs on stale/missing health file, `--check-only` flag added. DEC-009 crystallised from live hierarchy: `IWytchInteractable` PROTECTED (blast radius 3, dependents: IWytchCarryable, IWytchWorkSite, UForemanSurveyComponent). `AISLING_BP_BOOT.md` created at project root — Aisling_BP's single boot entry point replacing old `Agent_Context.md`. Handshake HND-001 cycle complete: Aisling_BP live, all 4 BP assets verified, 0 compile errors. Backup system established: `Tools/backup.ps1` → `F:\TheWytching` via robocopy. global_rules.md v2.5: backup hardened as mandatory at session wrap-up and pre-change-set.
+
+**Decisions made this session:** DEC-009 (IWytchInteractable PROTECTED). All others were pre-existing, crystallised from Agent_Context.md.
+
+**Protocols added this session:** Step 1a hierarchy health check (global_rules v2.4→v2.5), Backup Rule with two hard triggers.
+
+**End state:** Both surfaces live. Step 2 ready — start with 2a (RegisterWorker/UnregisterWorker on AIC_Foreman). No active missions. No broken modules. All source compiled clean as of 2026-02-28.
+
+### SES-002  2026-03-08
+Hierarchy: NOT REGENERATED — clean at boot (2026-03-09T01:46:20Z · 23 classes · 0 broken)
+Tokens: ~6,000 consumed / ~122,000 remaining
+Modules touched: foreman_ai
+Missions opened: none
+Missions closed: none
+
+**What happened:**
+Step 2a complete. Worker roster added to `AForeman_AIController`: `RegisterWorker`/`UnregisterWorker` (BlueprintCallable), `GetRegisteredWorkers` (C++ only), `RegisteredWorkers` (`TArray<TWeakObjectPtr<AActor>>`, VisibleAnywhere). `TWeakObjectPtr` arrays cannot be Blueprint-exposed via UHT — accessor is C++ only and array UPROPERTY has no BlueprintReadOnly. `RemoveAll` in `UnregisterWorker` does free stale-entry cleanup in the same pass. No UHT errors. Live Coding safe — no editor restart required. Task boundary written for Step 2b.
+
+**Decisions made this session:** None new.
+
+**End state:** Roster live. Step 2b next — `GetOwnCondition()` returning `UAndroidConditionComponent*`.
+
+---
+
+Phases 0–4 (~2026-02-28): Full C++ Foreman system built — ForemanTypes, AndroidTypes, AndroidConditionComponent, all 4 IWytch* interfaces, AForeman_AIController (StateTree+Brain+Perception), 5 StateTree tasks, 2 conditions, 1 evaluator. StateTree startup timing bug found and fixed (PAT-001). PIE validated: Idle→Wait→Dispatch(fail, expected)→Idle loop confirmed.
+
+Step 1 (2026-02-28): SOD_Build SmartObjectDefinition (Task.Build, 1 slot). BP_WorkStation (SmartObjectComponent + IWytchWorkSite). Placed WorkStation_Build_01 in NPCLevel. PIE validated slot registration and claim/use/release cycle.
+
+IWytchWorkSite refactor (2026-02-27): Contract is now BeginWork/TickWork/EndWork/GetTaskType/IsOperational/GetInteractionDuration. TryClaim/ReleaseSite/GetClaimant/GetWorkType removed (SmartObjects made them redundant).
+
+### SES-003  2026-03-08
+Hierarchy: NOT REGENERATED — clean at boot (2026-03-09T01:46:20Z · 23 classes · 0 broken)
+Tokens: ~8,000 consumed / ~120,000 remaining
+Modules touched: foreman_ai
+Missions opened: none
+Missions closed: none
+
+**What happened:**
+Steps 2b + 2c complete. `GetOwnCondition()` added to `AForeman_AIController` — forward decl, UFUNCTION, impl via `GetPawn()->FindComponentByClass<UAndroidConditionComponent>()`. `ScanWorld()` in `FForemanEval_WorkAvailability` fully rewritten: tag-based `GetAllActorsWithTag` replaced with roster loop + `IWytchCommandable::Execute_GetWorkerState()` for worker counts, and `USmartObjectSubsystem::FindSmartObjects()` with 5000u `FBox` + `ESmartObjectSlotState::Free` for available work count. Graceful fallback warnings on missing controller/subsystem. All unused includes removed. Zero errors.
+
+**Decisions made this session:** None new.
+
+**End state:** Evaluator live. Steps 2d+2e next (conditions file).
+
+### SES-004  2026-03-08
+Hierarchy: NOT REGENERATED — no new classes added in Steps 2d+2e
+Tokens: ~9,000 consumed / ~119,000 remaining
+Modules touched: foreman_ai
+Missions opened: none
+Missions closed: none
+
+**What happened:**
+Steps 2d + 2e complete. Both conditions in `ForemanStateTreeConditions.cpp` rewritten. `HasIdleWorkers`: roster loop + `IWytchCommandable::Execute_GetWorkerState()` — returns true on first `EWorkerState::Idle` hit, no world scan. `HasAvailableWork`: `USmartObjectSubsystem::FindSmartObjects()` with 5000u `FBox`, returns true on first `ESmartObjectSlotState::Free` slot. DE-004 (`GetAllActorsWithTag`) fully retired from conditions and evaluator. `ForemanTypes.h` and `GameplayStatics.h` removed as they became unused. Zero errors.
+
+**Decisions made this session:** None new.
+
+**End state:** Conditions + evaluator fully on SmartObject/roster path. `ForemanStateTreeTasks.cpp` is the only remaining tag-based file. Steps 2f+2g next.
+
+---
+### SES-005  2026-03-09
+Hierarchy: NOT REGENERATED � no new classes added in Steps 2f+2g (ForemanStateTreeTasks.cpp only)
+Tokens: ~6,000 consumed / ~122,000 remaining
+Modules touched: foreman_ai
+Missions opened: none
+Missions closed: none
+**What happened:**
+Steps 2f + 2g complete. `ForemanStateTreeTasks.cpp` and `.h` fully refactored � DE-004 retired from the last remaining file.
+`PlanJob::EnterState`: `GetAllActorsWithTag` ("WorkStation") + tag-based "Claimed" check replaced with `USmartObjectSubsystem::FindSmartObjects()` (5000u box, picks closest `ESmartObjectSlotState::Free` slot). Worker selection: `GetAllActorsWithTag` ("Worker") + "Idle" tag replaced with `AForeman_AIController::GetRegisteredWorkers()` roster loop + `IWytchCommandable::Execute_GetWorkerState()`. Result stored in `Data.SelectedSlotResult` + `Data.SelectedWorker`.
+`AssignWorker::EnterState`: tag-based "Claimed"/"Idle" mutation replaced with `IWytchCommandable::Execute_ReceiveSmartObjectAssignment(Worker, FSmartObjectClaimHandle::InvalidHandle, Data.SelectedSlotResult.SlotHandle, nullptr)` per DEC-004 (worker claims on arrival).
+Header changes: `FSmartObjectRequestResult SelectedSlotResult` added to `FForemanTask_PlanJobInstanceData`. `AssignWorker::FInstanceDataType` changed from `FForemanTaskInstanceData` to `FForemanTask_PlanJobInstanceData` so it can access the slot+worker pair set by PlanJob. New includes: `IWytchCommandable.h`, `SmartObjectSubsystem.h`, `SmartObjectRuntime.h`, `SmartObjectRequestTypes.h`. Zero errors (Rider analysis clean).
+**Decisions made this session:** None new.
+**End state:** DE-004 (`GetAllActorsWithTag`) fully retired from all Foreman AI files. Step 3 next � workers implement `IWytchCommandable`. `BP_AutoBot` is the first candidate (has partial `BPI_WorkerCommand`). Confirm with Ricky before starting.

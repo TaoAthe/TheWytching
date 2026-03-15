@@ -1,0 +1,7 @@
+/project
+   Agent_context.md
+   architecture.md
+   upgrade_paths.md
+   tasks.md
+   known_issues.md
+   coding_rules.md

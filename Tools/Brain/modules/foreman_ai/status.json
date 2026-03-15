@@ -1,0 +1,27 @@
+{
+  "module": "foreman_ai",
+  "schema_version": "1.0",
+  "status": "broken",
+  "status_options": ["stable", "broken", "in_progress", "needs_review"],
+  "last_updated": "2026-03-09T19:45:00Z",
+  "last_stable_commit": null,
+  "broken_since": "2026-03-09T19:45:00Z",
+  "depends_on": ["interfaces", "worker_system", "workstation"],
+  "dependents": [],
+  "blast_radius": [],
+  "owner_surface": "Rider",
+  "changed_files": [
+    "Source/TheWytching/Foreman_AIController.h",
+    "Source/TheWytching/Foreman_AIController.cpp",
+    "Source/TheWytching/ForemanStateTreeEvaluators.cpp",
+    "Source/TheWytching/ForemanStateTreeConditions.cpp",
+    "Source/TheWytching/ForemanStateTreeTasks.h",
+    "Source/TheWytching/ForemanStateTreeTasks.cpp"
+  ],
+  "open_issues": [
+    "BUILD FAILED — ForemanStateTreeConditions.cpp compile error. Diagnostic logs added SES-006 caused failure. Fix on next boot.",
+    "Dispatch transition (Idle→Dispatch) not firing — root cause unknown, HND-007 diagnostic PIE retest pending.",
+    "ForemanTask_Monitor still uses GetAllActorsWithTag + 'Claimed' tag — DE-004 residue, low priority."
+  ],
+  "notes": "SES-006: Bug A (evaluator force-scan on start) and Bug B (SO warning spam) confirmed fixed and verified by Aisling_BP. Diagnostic logs added to conditions to diagnose remaining dispatch failure — build broke on that change. Overnight shutdown in broken state. Resume: Rider fixes compile error first, then Aisling_BP runs HND-007 PIE diagnostic retest."
+}
