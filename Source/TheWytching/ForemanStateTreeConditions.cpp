@@ -1,4 +1,5 @@
 #include "ForemanStateTreeConditions.h"
+#include "ForemanTypes.h"
 
 #include "Foreman_AIController.h"
 #include "IWytchCommandable.h"
